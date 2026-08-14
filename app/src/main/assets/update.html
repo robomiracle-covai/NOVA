@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>System Update</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --jarvis-cyan: #00f2ff;
+            --jarvis-bg: #030a12;
+            --glow: 0 0 15px rgba(0, 242, 255, 0.5);
+        }
+
+        body {
+            background-color: var(--jarvis-bg);
+            color: var(--jarvis-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(0, 242, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.05), var(--glow);
+        }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+            animation: panBg 20s linear infinite;
+        }
+
+        @keyframes panBg {
+            0% { background-position: 0 0; }
+            100% { background-position: 30px 30px; }
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 242, 255, 0.1);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--jarvis-cyan);
+            box-shadow: var(--glow);
+            transition: width 0.3s ease-out;
+        }
+
+        .scanning-line {
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            animation: scanLine 2s infinite;
+        }
+
+        @keyframes scanLine {
+            0% { left: -100%; }
+            100% { left: 200%; }
+        }
+
+        .shimmer-text {
+            background: linear-gradient(90deg, #00f2ff, #fff, #00f2ff);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            animation: shimmer 3s linear infinite;
+        }
+
+        @keyframes shimmer {
+            to { background-position: 200% center; }
+        }
+
+        .hex-bg {
+            position: absolute;
+            inset: 0;
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='103.92' viewBox='0 0 60 103.92' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l30 17.32v34.64L30 69.28 0 51.96V17.32L30 0z' fill-opacity='0' stroke='%2300f2ff' stroke-width='1'/%3E%3C/svg%3E");
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="hex-bg"></div>
+
+    <div class="glass-panel p-8 w-[90%] max-w-md flex flex-col items-center relative overflow-hidden">
+        
+        <!-- Rotating ring animation -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 border-t-2 border-r-2 border-cyan-500 rounded-full opacity-20 animate-[spin_4s_linear_infinite]"></div>
+        <div class="absolute -bottom-10 -left-10 w-32 h-32 border-b-2 border-l-2 border-cyan-500 rounded-full opacity-20 animate-[spin_4s_linear_infinite_reverse]"></div>
+
+        <svg class="w-12 h-12 mb-4 text-cyan-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+
+        <h2 class="orbitron text-2xl mb-1 tracking-widest shimmer-text text-center">SYSTEM UPDATE</h2>
+        <p id="status-text" class="text-xs uppercase tracking-[0.2em] opacity-70 mb-8 text-center text-cyan-300">Initializing Download...</p>
+
+        <div class="w-full relative">
+            <div class="flex justify-between items-end mb-2">
+                <span class="text-[10px] orbitron tracking-widest text-cyan-500">PROGRESS</span>
+                <span id="percentage-text" class="orbitron text-lg font-bold text-cyan-300">0%</span>
+            </div>
+            
+            <div class="progress-container">
+                <div id="progress-bar" class="progress-bar">
+                    <div class="scanning-line"></div>
+                </div>
+            </div>
+            
+            <div class="mt-2 flex justify-between">
+                <span class="text-[8px] orbitron opacity-40">SECURE CHANNEL</span>
+                <span class="text-[8px] orbitron opacity-40 animate-pulse">DO NOT POWER OFF</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Updates the progress bar and status text.
+         * Called by MainActivity.java via evaluateJavascript
+         * 
+         * @param {number} percentage 0 to 100
+         * @param {string} status Optional status text
+         */
+        function updateProgress(percentage, status) {
+            const bar = document.getElementById('progress-bar');
+            const pctText = document.getElementById('percentage-text');
+            const statusEl = document.getElementById('status-text');
+
+            if (percentage >= 0 && percentage <= 100) {
+                bar.style.width = percentage + '%';
+                pctText.innerText = Math.floor(percentage) + '%';
+            }
+
+            if (status) {
+                statusEl.innerText = status;
+            }
+        }
+        
+        // Ensure function is exposed globally
+        window.updateProgress = updateProgress;
+    </script>
+</body>
+</html>

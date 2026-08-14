@@ -1,0 +1,5 @@
+{
+  "version": 1.8,
+  "download_url": "https://nadhilrobomiracle.github.io/nova_releases/update.zip",
+  "release_notes": "Fixed Settings view scrolling issue hiding top configuration elements."
+}

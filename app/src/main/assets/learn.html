@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NOVA COMMAND - DEV ENV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --jarvis-cyan: #00f2ff;
+            --jarvis-bg: #030a12;
+            --glow: 0 0 15px rgba(0, 242, 255, 0.5);
+        }
+
+        body {
+            background-color: var(--jarvis-bg);
+            color: var(--jarvis-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, #0a192f 0%, #030a12 100%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .arc-reactor {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 2px solid var(--jarvis-cyan);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--glow), inset var(--glow);
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        .arc-inner {
+            width: 100px;
+            height: 100px;
+            border: 6px dashed var(--jarvis-cyan);
+            border-radius: 50%;
+            animation: rotate 4s linear infinite;
+        }
+
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        .glass-panel {
+            background: rgba(0, 242, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 242, 255, 0.15);
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .interactive-card:hover {
+            background: rgba(0, 242, 255, 0.1);
+            border-color: var(--jarvis-cyan);
+            box-shadow: 0 0 25px rgba(0, 242, 255, 0.2), inset 0 0 15px rgba(0, 242, 255, 0.1);
+            cursor: pointer;
+            transform: translateY(-5px);
+        }
+
+        .interactive-card:active { transform: scale(0.98); }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            body { font-size: 14px; overflow-y: auto; }
+            #main-ui { height: auto; min-height: 100vh; overflow-y: auto; }
+        }
+
+        /* Custom Theme Colors for Cards */
+        .card-python:hover {
+            border-color: #fbbf24; /* Amber/Yellow for Python */
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.2), inset 0 0 15px rgba(251, 191, 36, 0.1);
+        }
+        
+        .card-block:hover {
+            border-color: #a855f7; /* Purple for Block Code */
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.2), inset 0 0 15px rgba(168, 85, 247, 0.1);
+        }
+    </style>
+</head>
+
+<body class="flex flex-col">
+
+    <div class="grid-bg"></div>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="arc-reactor">
+            <div class="arc-inner"></div>
+            <div class="absolute font-bold orbitron text-lg">DEV</div>
+        </div>
+        <div class="mt-8 text-center px-4">
+            <h1 class="orbitron text-xl md:text-2xl tracking-widest text-white uppercase">Environment Init</h1>
+            <p class="text-xs tracking-[0.3em] uppercase opacity-60 mt-2">Loading Compilers...</p>
+            <div class="w-48 md:w-64 h-1 bg-gray-900 mt-4 overflow-hidden relative mx-auto">
+                <div id="load-progress" class="absolute left-0 top-0 h-full bg-cyan-400 w-0 transition-all duration-100"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN INTERFACE -->
+    <main id="main-ui" class="hidden h-screen p-4 md:p-8 flex-col opacity-0 transition-opacity duration-1000 max-w-[1200px] mx-auto w-full box-border">
+
+        <!-- Global Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center border-b border-cyan-900 pb-4 mb-6 shrink-0 gap-4">
+            <div class="text-center md:text-left">
+                <h2 class="orbitron text-2xl md:text-3xl font-bold tracking-tighter">NOVA <span class="text-white">COMMAND</span></h2>
+                <p class="text-[10px] tracking-[0.4em] uppercase opacity-50">Development Environment</p>
+            </div>
+            
+            <!-- Back Button Area -->
+            <button onclick="window.location.href='robot.html'" class="flex items-center gap-2 text-cyan-500 hover:text-cyan-300 transition-all duration-300 uppercase tracking-widest text-xs md:text-sm font-bold group bg-cyan-900/20 px-4 py-2 rounded-lg border border-cyan-900/50 hover:border-cyan-400/50 hover:bg-cyan-900/40">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m15 18-6-6 6-6"/>
+                </svg>
+                Back to Hub
+            </button>
+        </header>
+
+        <!-- Studio Selection Grid -->
+        <div class="flex-1 flex flex-col items-center justify-center p-2">
+            <div class="flex flex-col md:flex-row gap-8 w-full justify-center items-stretch">
+                
+                <!-- Python Code Card -->
+                <div onclick="window.location.href='python.html'" class="glass-panel interactive-card card-python flex-1 flex flex-col items-center justify-center text-center p-8 md:p-16 group relative overflow-hidden">
+                    <div class="absolute inset-0 bg-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    
+                    <div class="mb-6 p-6 rounded-full border border-yellow-500/20 group-hover:border-yellow-400/50 transition-all bg-black/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 md:w-24 md:h-24 text-yellow-500/50 group-hover:text-yellow-400 transition-colors duration-300 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="4 17 10 11 4 5"></polyline>
+                            <line x1="12" y1="19" x2="20" y2="19"></line>
+                        </svg>
+                    </div>
+
+                    <h2 class="orbitron text-2xl md:text-3xl font-bold tracking-wider text-white mb-3 relative z-10">PYTHON CODE</h2>
+                    <div class="h-1 w-16 bg-yellow-500/50 mb-4 group-hover:w-32 group-hover:bg-yellow-400 transition-all duration-500 relative z-10"></div>
+                    <p class="text-xs md:text-sm tracking-widest uppercase opacity-60 relative z-10 max-w-[250px]">Advanced Scripting & Core Logic Environment</p>
+                </div>
+
+                <!-- Block Code Card -->
+                <div onclick="window.location.href='block.html'" class="glass-panel interactive-card card-block flex-1 flex flex-col items-center justify-center text-center p-8 md:p-16 group relative overflow-hidden">
+                    <div class="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    
+                    <div class="mb-6 p-6 rounded-full border border-purple-500/20 group-hover:border-purple-400/50 transition-all bg-black/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 md:w-24 md:h-24 text-purple-500/50 group-hover:text-purple-400 transition-colors duration-300 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 11V9a2 2 0 0 0-2-2h-2"/>
+                            <path d="M15 3v4"/>
+                            <path d="M11 7H9a2 2 0 0 0-2 2v2"/>
+                            <path d="M3 11v4"/>
+                            <path d="M7 15v2a2 2 0 0 0 2 2h2"/>
+                            <path d="M15 19v4"/>
+                            <path d="M15 19h2a2 2 0 0 0 2-2v-2"/>
+                            <path d="M21 15v-4"/>
+                            <rect x="9" y="9" width="6" height="6" rx="1"/>
+                        </svg>
+                    </div>
+
+                    <h2 class="orbitron text-2xl md:text-3xl font-bold tracking-wider text-white mb-3 relative z-10">BLOCK CODE</h2>
+                    <div class="h-1 w-16 bg-purple-500/50 mb-4 group-hover:w-32 group-hover:bg-purple-400 transition-all duration-500 relative z-10"></div>
+                    <p class="text-xs md:text-sm tracking-widest uppercase opacity-60 relative z-10 max-w-[250px]">Visual Programming & Rapid Prototyping</p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Global Footer -->
+        <footer class="mt-8 flex justify-between items-center text-[10px] opacity-40 uppercase tracking-[0.3em] shrink-0 border-t border-cyan-900/50 pt-4">
+            <div>Nova OS v4.0.2 Premium</div>
+            <div id="clock">00:00:00</div>
+        </footer>
+    </main>
+
+    <script>
+        const loadingScreen = document.getElementById('loading-screen');
+        const mainUI = document.getElementById('main-ui');
+        const loadProgress = document.getElementById('load-progress');
+
+        // Startup Simulation (sped up slightly for sub-pages)
+        window.onload = async () => {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 20; // Faster progress
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    completeLoading();
+                }
+                loadProgress.style.width = `${progress}%`;
+            }, 80);
+
+            startClock();
+        };
+
+        function completeLoading() {
+            setTimeout(() => {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    mainUI.classList.remove('hidden');
+                    mainUI.classList.add('flex');
+                    setTimeout(() => mainUI.style.opacity = '1', 50);
+                }, 500); // Shorter fade transition
+            }, 300);
+        }
+
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('clock').innerText = now.toTimeString().split(' ')[0];
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

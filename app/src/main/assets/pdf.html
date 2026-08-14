@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NOVA LEARNING MATRIX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --jarvis-cyan: #00f2ff;
+            --jarvis-blue: #0066ff;
+            --jarvis-bg: #030a12;
+            --glow: 0 0 15px rgba(0, 242, 255, 0.5);
+            --glow-strong: 0 0 30px rgba(0, 242, 255, 0.8);
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            background-color: var(--jarvis-bg);
+            color: var(--jarvis-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        .fira-code { font-family: 'Fira Code', monospace; }
+
+        /* ================= SUPER ANIMATIONS (ENTRY) ================= */
+        
+        #boot-screen {
+            position: fixed;
+            inset: 0;
+            background-color: #010409;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            animation: bootFadeOut 0.8s ease-in-out 3.5s forwards;
+        }
+
+        @keyframes bootFadeOut {
+            0% { opacity: 1; visibility: visible; }
+            100% { opacity: 0; visibility: hidden; z-index: -1; }
+        }
+
+        /* Fixed Centered Boot Text Animation using Clip-Path */
+        .boot-text {
+            clip-path: inset(0 100% 0 0);
+            animation: revealBoot 1.5s cubic-bezier(0.1, 0.8, 0.3, 1) 0.5s forwards;
+        }
+
+        @keyframes revealBoot {
+            to { clip-path: inset(0 0 0 0); }
+        }
+
+        .progress-container {
+            width: 300px;
+            height: 2px;
+            background: rgba(0, 242, 255, 0.1);
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            animation: showProgress 0.1s 2.5s forwards;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--jarvis-cyan);
+            width: 0%;
+            box-shadow: var(--glow);
+            animation: fillProgress 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) 2.5s forwards;
+        }
+
+        @keyframes showProgress { to { opacity: 1; } }
+        @keyframes fillProgress { to { width: 100%; } }
+
+        /* UI Entry Staggers */
+        .anim-slide-right { opacity: 0; transform: translateX(-50px); animation: slideInRight 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) 3.8s forwards; }
+        .anim-slide-down { opacity: 0; transform: translateY(-30px); animation: slideInDown 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) 4.0s forwards; }
+        .anim-scale-up { opacity: 0; transform: scale(0.8); animation: scaleUp 1s cubic-bezier(0.1, 0.8, 0.3, 1) 4.2s forwards; }
+        .anim-slide-up { opacity: 0; transform: translateY(30px); animation: slideInUp 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) 4.4s forwards; }
+
+        @keyframes slideInRight { to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideInDown { to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleUp { to { opacity: 1; transform: scale(1); } }
+        @keyframes slideInUp { to { opacity: 1; transform: translateY(0); } }
+
+        /* ================= HUD ELEMENTS ================= */
+        .glass-panel {
+            background: rgba(0, 242, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 242, 255, 0.15);
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.02);
+        }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 242, 255, 0.1);
+            position: absolute;
+            animation: scan 6s linear infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes scan { from { top: 0%; } to { top: 100%; } }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Chapter List Styling */
+        .chapter-item {
+            border-left: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .chapter-item:hover {
+            background: rgba(0, 242, 255, 0.1);
+            border-left-color: var(--jarvis-cyan);
+            padding-left: 1.5rem;
+            cursor: pointer;
+        }
+        .chapter-item.active {
+            background: linear-gradient(90deg, rgba(0, 242, 255, 0.2) 0%, transparent 100%);
+            border-left-color: var(--jarvis-cyan);
+            box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.1);
+        }
+
+        /* Central AI Core Animations */
+        .core-ring-1 { animation: spin 20s linear infinite; }
+        .core-ring-2 { animation: spin 15s linear infinite reverse; }
+        .core-ring-3 { animation: pulseCore 3s ease-in-out infinite alternate; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulseCore {
+            0% { box-shadow: 0 0 20px rgba(0, 242, 255, 0.2); transform: scale(0.98); }
+            100% { box-shadow: 0 0 50px rgba(0, 242, 255, 0.6), inset 0 0 30px rgba(0, 242, 255, 0.4); transform: scale(1.02); }
+        }
+
+        /* AI Speaking State */
+        .ai-speaking .core-ring-3 {
+            animation: speakingPulse 0.4s ease-in-out infinite alternate !important;
+            border-color: #00f2ff;
+        }
+        @keyframes speakingPulse {
+            0% { transform: scale(1); box-shadow: var(--glow); filter: brightness(1); }
+            100% { transform: scale(1.15); box-shadow: var(--glow-strong); filter: brightness(1.5); }
+        }
+
+        /* Voice Waves */
+        .wave-bar {
+            width: 4px;
+            height: 10px;
+            background: var(--jarvis-cyan);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+        .ai-speaking .wave-bar {
+            animation: waveMotion 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes waveMotion {
+            0% { height: 10px; opacity: 0.5; }
+            100% { height: 50px; opacity: 1; box-shadow: var(--glow); }
+        }
+        .wave-bar:nth-child(1) { animation-delay: 0.0s; }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+        .wave-bar:nth-child(6) { animation-delay: 0.5s; }
+        .wave-bar:nth-child(7) { animation-delay: 0.4s; }
+        .wave-bar:nth-child(8) { animation-delay: 0.3s; }
+
+        /* Analyzing / Book Scan Animation */
+        @keyframes scanBook { 
+            0% { top: 0%; box-shadow: 0 -5px 15px rgba(0,242,255,0.8); } 
+            100% { top: 100%; box-shadow: 0 5px 15px rgba(0,242,255,0.8); } 
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 242, 255, 0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 242, 255, 0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--jarvis-cyan); }
+
+        /* Buttons */
+        .action-btn {
+            background: rgba(0, 242, 255, 0.05);
+            border: 1px solid var(--jarvis-cyan);
+            box-shadow: inset 0 0 10px rgba(0, 242, 255, 0.1);
+            transition: all 0.2s;
+        }
+        .action-btn:hover {
+            background: rgba(0, 242, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.4), inset 0 0 10px rgba(0, 242, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        .action-btn:active { transform: translateY(0) scale(0.98); }
+        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
+        /* Active Microphone Listening State applied to Core */
+        .listening {
+            border-color: #ffaa00 !important;
+            color: #ffaa00 !important;
+            animation: pulseWarning 1s infinite alternate !important;
+        }
+        .listening svg { color: #ffaa00 !important; drop-shadow: 0 0 10px rgba(255, 170, 0, 0.8); }
+        
+        @keyframes pulseWarning {
+            0% { box-shadow: 0 0 20px rgba(255, 170, 0, 0.4), inset 0 0 15px rgba(255, 170, 0, 0.2) !important; transform: scale(1); }
+            100% { box-shadow: 0 0 40px rgba(255, 170, 0, 0.8), inset 0 0 25px rgba(255, 170, 0, 0.5) !important; transform: scale(1.08); }
+        }
+
+
+        /* Mobile Menu Toggle classes */
+        @media (max-width: 768px) {
+            aside.glass-panel {
+                position: fixed;
+                left: -100%;
+                top: 0;
+                width: 80%;
+                height: 100vh;
+                z-index: 100;
+                transition: left 0.3s ease;
+                background: rgba(1, 4, 9, 0.95);
+            }
+            aside.glass-panel.show-mobile {
+                left: 0;
+                display: flex !important;
+            }
+            #mobile-menu-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 90;
+                backdrop-filter: blur(4px);
+            }
+            #mobile-menu-overlay.show-mobile {
+                display: block;
+            }
+        }
+
+        .back-btn {
+            background: rgba(0, 242, 255, 0.05);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            color: var(--jarvis-cyan);
+            transition: all 0.3s;
+        }
+        .back-btn:hover {
+            background: rgba(0, 242, 255, 0.1);
+            border-color: var(--jarvis-cyan);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+        }
+
+    </style>
+</head>
+
+<body class="flex flex-col">
+
+    <!-- BOOT SEQUENCE OVERLAY -->
+    <div id="boot-screen">
+        <div class="fira-code text-xs md:text-sm text-cyan-500/50 mb-4 tracking-widest absolute top-10 left-10">
+            INIT_SEQUENCE // BOOT_LOADER_v9.4<br>
+            ESTABLISHING_SECURE_LINK... [OK]<br>
+            BYPASSING_FIREWALLS... [OK]<br>
+            LOADING_NEURAL_MATRIX...
+        </div>
+        
+        <h1 class="orbitron text-3xl md:text-5xl font-black text-white tracking-[0.3em] boot-text shadow-cyan-500 drop-shadow-[0_0_15px_rgba(0,242,255,0.8)] text-center">
+            NOVA<span class="text-cyan-400">_CORE</span>
+        </h1>
+        
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+        </div>
+        
+        <div class="mt-4 text-xs tracking-widest opacity-50 uppercase animate-pulse" id="boot-status">Initializing Interface</div>
+    </div>
+
+    <!-- AUTHENTICATION OVERLAY (Hidden initially) -->
+    <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-bg hidden">
+        <div class="glass-panel p-8 w-full max-w-md relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-cyan-500/50">
+                <div class="h-full bg-cyan-400 w-1/3 animate-[scan_2s_linear_infinite]"></div>
+            </div>
+            <h2 class="orbitron text-2xl font-bold tracking-widest text-white mb-6 text-center">SYSTEM <span class="text-cyan-400">LOGIN</span></h2>
+            
+            <form id="auth-form" onsubmit="handleAuth(event)">
+                <div class="mb-4">
+                    <label class="fira-code text-[10px] text-cyan-500/60 uppercase tracking-widest mb-1 block">Operator Email</label>
+                    <input type="email" id="auth-email" required class="w-full bg-black/50 border border-cyan-900/50 rounded px-4 py-2 text-cyan-300 fira-code text-sm focus:outline-none focus:border-cyan-400 transition-all">
+                </div>
+                <div class="mb-6">
+                    <label class="fira-code text-[10px] text-cyan-500/60 uppercase tracking-widest mb-1 block">Security Passcode</label>
+                    <input type="password" id="auth-password" required class="w-full bg-black/50 border border-cyan-900/50 rounded px-4 py-2 text-cyan-300 fira-code text-sm focus:outline-none focus:border-cyan-400 transition-all">
+                </div>
+                <div id="auth-error" class="text-red-400 text-xs fira-code mb-4 hidden text-center"></div>
+                <div class="flex gap-4">
+                    <button type="button" onclick="handleAuth(event, 'login')" class="action-btn flex-1 py-2 rounded orbitron font-bold text-sm">LOGIN</button>
+                    <button type="button" onclick="handleAuth(event, 'signup')" class="action-btn flex-1 py-2 rounded orbitron font-bold text-sm bg-cyan-900/20">REGISTER</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN UI -->
+    <div class="grid-bg"></div>
+    <div class="scanline"></div>
+
+    <main class="flex h-full w-full box-border relative z-10 p-2 md:p-4 gap-4">
+    
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
+        
+        <!-- LEFT SIDEBAR: CHAPTERS / PDFs -->
+        <aside class="glass-panel w-full md:w-80 flex-shrink-0 flex flex-col h-full anim-slide-right hidden md:flex overflow-hidden relative">
+            <!-- Sidebar Header -->
+            <div class="p-6 border-b border-cyan-900/50 shrink-0 flex justify-between items-center">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                        </svg>
+                        <h2 class="orbitron text-xl font-bold tracking-widest text-white">MODULES</h2>
+                    </div>
+                    <div class="text-[10px] text-cyan-500/60 uppercase tracking-widest fira-code">Select knowledge base</div>
+                </div>
+                
+                <!-- Upload Button (Proxy for mobile menu) -->
+                <button id="sidebar-upload-btn" onclick="triggerPDFUpload()" class="action-btn w-8 h-8 rounded flex items-center justify-center text-cyan-400" title="Upload New Module">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <input type="file" id="file-upload" accept="application/pdf" class="hidden" onchange="uploadPDF(event)">
+            </div>
+
+            <!-- Chapter List -->
+            <div id="chapter-list" class="flex-1 overflow-y-auto py-2">
+                <!-- Injected via JS -->
+                <div class="p-6 text-center text-xs fira-code text-cyan-500/40">Syncing modules from core...</div>
+            </div>
+
+            <!-- Sidebar Footer (System Status) -->
+            <div class="p-4 border-t border-cyan-900/50 shrink-0 bg-black/20">
+                <div class="flex justify-between items-center text-[10px] fira-code text-cyan-500/70 mb-2">
+                    <span id="backend-status-text">SYSTEM OFFLINE</span>
+                    <span id="backend-ping" class="text-red-400">--</span>
+                </div>
+                <div class="h-1 bg-cyan-900/50 rounded overflow-hidden">
+                    <div id="backend-status-bar" class="h-full bg-red-500 w-[100%] shadow-[0_0_10px_red]"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER AREA: AI INTERACTION -->
+        <section class="flex-1 flex flex-col h-full overflow-hidden relative">
+            
+            <!-- Global Header -->
+            <header class="glass-panel px-4 md:px-6 py-4 flex justify-between items-center mb-4 anim-slide-down shrink-0">
+                <div class="flex items-center gap-2 md:gap-4">
+                    <button onclick="window.location.href='robot.html'" class="back-btn p-2 rounded-full flex items-center justify-center" title="Back to Previous">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <div id="ai-status-dot" class="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_red]"></div>
+                    <h1 class="orbitron text-base md:text-2xl font-bold tracking-widest truncate max-w-[150px] md:max-w-none">
+                        NOVA <span class="text-white">LEARNING MATRIX</span>
+                    </h1>
+                </div>
+                <div class="flex items-center gap-2 md:gap-4 fira-code text-xs">
+                    <div class="hidden md:block text-right">
+                        <div class="text-[9px] text-cyan-500/60">ACTIVE PROTOCOL</div>
+                        <div id="active-chapter-display" class="text-cyan-300 font-bold">Awaiting Selection...</div>
+                    </div>
+                    <div class="border-l border-cyan-800 pl-4 hidden sm:block">
+                        <div class="text-[9px] text-cyan-500/60">OPERATOR</div>
+                        <div class="text-white font-bold" id="operator-display">GUEST</div>
+                    </div>
+                    <button onclick="logout()" class="text-[9px] text-cyan-500/60 hover:text-red-400 border border-cyan-900/50 px-2 py-1 rounded hidden sm:block">LOGOUT</button>
+                    
+                    <!-- Mobile Upload Button -->
+                    <button onclick="triggerPDFUpload()" class="action-btn w-10 h-10 rounded flex md:hidden items-center justify-center text-cyan-400 ml-2" title="Upload PDF">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    </button>
+
+                    <!-- Mobile Menu Button -->
+                    <button onclick="toggleMobileMenu()" class="action-btn w-10 h-10 rounded flex md:hidden items-center justify-center text-cyan-400 ml-2" id="mobile-menu-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Interaction Canvas -->
+            <div class="glass-panel flex-1 flex flex-col items-center justify-center pt-8 pb-4 px-4 md:px-6 relative overflow-hidden anim-scale-up">
+                
+                <!-- Background decorative elements -->
+                <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                    <svg viewBox="0 0 100 100" class="w-[800px] h-[800px] animate-[spin_60s_linear_infinite]">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="var(--jarvis-cyan)" stroke-width="0.2" stroke-dasharray="2 4" />
+                        <circle cx="50" cy="50" r="30" fill="none" stroke="var(--jarvis-cyan)" stroke-width="0.1" stroke-dasharray="1 5" />
+                        <path d="M50 5 L50 95 M5 50 L95 50" stroke="var(--jarvis-cyan)" stroke-width="0.1" />
+                    </svg>
+                </div>
+
+                <!-- Central AI Core Animation -->
+                <div id="ai-core-container" class="relative w-48 h-48 md:w-64 md:h-64 landscape:w-24 landscape:h-24 landscape:md:w-48 landscape:md:h-48 landscape:mb-2 flex items-center justify-center mb-8 shrink-0 transition-all duration-500">
+                    <!-- Outer Dashed Ring -->
+                    <div class="absolute inset-0 border-[3px] border-dashed border-cyan-500/30 rounded-full core-ring-1"></div>
+                    <!-- Middle Solid Ring -->
+                    <div class="absolute inset-4 border border-cyan-400/50 rounded-full core-ring-2 border-l-transparent border-r-transparent"></div>
+                    <!-- Inner Glowing Core (Now acts as the Mic Button) -->
+                    <div id="core-btn" onclick="toggleListening()" class="absolute inset-8 bg-cyan-900/40 rounded-full border-2 border-cyan-400 core-ring-3 flex items-center justify-center backdrop-blur-sm z-10 overflow-hidden cursor-pointer transition-all hover:bg-cyan-800/50" title="Click to Speak">
+                        
+                        <!-- Normal AI Icon (Mic) -->
+                        <svg id="core-icon-normal" xmlns="http://www.w3.org/2000/svg" class="absolute w-12 h-12 md:w-16 md:h-16 text-cyan-300 drop-shadow-[0_0_10px_rgba(0,242,255,0.8)] transition-all duration-300 opacity-100 scale-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" x2="12" y1="19" y2="22" />
+                        </svg>
+
+                        <!-- Book Scanning Icon (Hidden by default) -->
+                        <div id="core-icon-scanning" class="absolute inset-0 flex items-center justify-center opacity-0 scale-75 transition-all duration-300 pointer-events-none">
+                            <div class="relative w-10 h-10 md:w-14 md:h-14">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full text-cyan-300 drop-shadow-[0_0_10px_rgba(0,242,255,0.8)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+                                    <path d="M8 7h6" />
+                                    <path d="M8 11h8" />
+                                </svg>
+                                <!-- Holographic Scanline Overlay -->
+                                <div class="absolute inset-0 overflow-hidden rounded">
+                                    <div class="w-full h-[2px] bg-cyan-300 absolute top-0 left-0 animate-[scanBook_1s_ease-in-out_infinite_alternate]"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Voice Wave Visualizer (Visible when speaking) -->
+                    <div id="voice-waves" class="absolute -bottom-16 left-1/2 -translate-x-1/2 flex items-end gap-1 h-16 w-32 justify-center opacity-0 transition-opacity duration-300 pointer-events-none">
+                        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+                        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+                        <div class="wave-bar"></div><div class="wave-bar"></div>
+                    </div>
+                </div>
+
+                <!-- Chat / Transcript Area -->
+                <div class="w-full max-w-3xl flex-1 mt-4 relative z-20 flex flex-col justify-end min-h-0">
+                    <div id="chat-box" class="w-full overflow-y-auto custom-scrollbar p-4 flex flex-col gap-4 mt-auto">
+                        <!-- Initial Message -->
+                        <div class="flex flex-col items-center justify-center h-full text-center opacity-50 transition-opacity" id="empty-state">
+                            <span class="orbitron text-xl mb-2 text-white">SYSTEM ONLINE</span>
+                            <span class="fira-code text-xs">Select a module or upload a new one to begin.</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Input Bar -->
+            <div class="glass-panel p-3 md:p-4 mt-4 anim-slide-up shrink-0 flex items-center gap-3 relative z-20">
+                <div class="flex-1 relative">
+                    <input type="text" id="chat-input" 
+                        class="w-full bg-black/50 border border-cyan-900/50 rounded-lg px-4 py-3 text-cyan-300 fira-code text-sm focus:outline-none focus:border-cyan-400 focus:bg-black/80 transition-all shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]"
+                        placeholder="Type query or click the core to speak..." disabled>
+                    
+                    <!-- decorative corners -->
+                    <div class="absolute top-0 left-0 w-2 h-2 border-t border-l border-cyan-500 rounded-tl pointer-events-none"></div>
+                    <div class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-cyan-500 rounded-br pointer-events-none"></div>
+                </div>
+
+                <button id="btn-send" onclick="handleSend()" class="action-btn px-6 py-3 rounded-lg orbitron font-bold tracking-widest text-sm shrink-0 flex items-center gap-2" disabled>
+                    SEND
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+            
+        </section>
+    </main>
+
+    <script>
+        // --- Configuration & State ---
+        const POCKETBASE_URL = "https://rbm-nuc7cjyhn.tail809c52.ts.net/api/collections/novapdf/records/y1qg2js3zq96ltp";
+        
+        let backendUrl = null;
+        let apiKey = localStorage.getItem('nova_api_key');
+        let activeModule = null; // Currently selected PDF filename
+        let isTyping = false;
+        let isListening = false;
+
+        // --- Mobile Menu Logic ---
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('aside.glass-panel');
+            const overlay = document.getElementById('mobile-menu-overlay');
+            sidebar.classList.toggle('show-mobile');
+            overlay.classList.toggle('show-mobile');
+        }
+        
+        // Close menu when clicking a chapter (on mobile)
+        function selectModule(filename, displayName, element) {
+            document.querySelectorAll('.chapter-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            
+            activeModule = filename;
+            document.getElementById('active-chapter-display').innerText = displayName;
+            
+            document.getElementById('chat-box').innerHTML = '';
+            addMessage('system', `Module [${displayName}] loaded into working memory. Ask any question regarding this document.`);
+            
+            if (window.innerWidth <= 768) toggleMobileMenu();
+        }
+        
+        // --- Speech Recognition Setup ---
+        let recognition;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                isListening = true;
+                document.getElementById('core-btn').classList.add('listening');
+                const input = document.getElementById('chat-input');
+                input.placeholder = "Listening for voice command...";
+                input.disabled = true;
+                
+                // Visual feedback for Android
+                if (navigator.vibrate) navigator.vibrate(50);
+                
+                // Stop any current speaking
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('chat-input').value = transcript;
+                stopListening();
+                handleSend(); // Auto-send when voice is captured
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Speech recognition error", event.error);
+                stopListening();
+            };
+
+            recognition.onend = function() {
+                if(isListening) stopListening();
+            };
+        }
+
+        // --- Initialization Sequence ---
+        window.onload = async () => {
+            // Allow pressing Enter to send
+            const inputBox = document.getElementById('chat-input');
+            if (inputBox) {
+                inputBox.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') handleSend();
+                });
+                
+                // Keyboard visibility fix for Android
+                inputBox.addEventListener('focus', () => {
+                    setTimeout(() => {
+                        inputBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                });
+            }
+
+            // 1. Fetch Backend URL from PocketBase
+            document.getElementById('boot-status').innerText = "Locating Core Server Tunnel...";
+            await initBackendConnection();
+
+            // 2. Check Auth
+            setTimeout(() => {
+                if (!apiKey) {
+                    showAuthModal();
+                } else {
+                    document.getElementById('operator-display').innerText = "AUTH_USER";
+                    loadModules();
+                    enableInput(true);
+                }
+            }, 3800); // Wait for boot screen to mostly fade
+        };
+
+        async function initBackendConnection(retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const res = await fetch(POCKETBASE_URL);
+                    const data = await res.json();
+                    
+                    if (data && data.ai_url) {
+                        backendUrl = data.ai_url.replace(/\/$/, ""); // remove trailing slash
+                        updateSystemStatus(true, "LINK ESTABLISHED");
+                        return; // Successfully connected
+                    } else {
+                        throw new Error("Invalid tunnel URL in registry");
+                    }
+                } catch (err) {
+                    console.error(`PocketBase connection failed (Attempt ${i + 1} of ${retries}):`, err);
+                    if (i === retries - 1) {
+                        updateSystemStatus(false, "TUNNEL OFFLINE");
+                        if (window.AndroidLauncher && window.AndroidLauncher.triggerNetworkError) {
+                            window.AndroidLauncher.triggerNetworkError();
+                        }
+                    } else {
+                        document.getElementById('boot-status').innerText = `Retrying Tunnel Connection... (${i + 1}/${retries})`;
+                        // Wait 2 seconds before retrying
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                }
+            }
+        }
+
+        function updateSystemStatus(isOnline, text) {
+            const statusText = document.getElementById('backend-status-text');
+            const statusBar = document.getElementById('backend-status-bar');
+            const ping = document.getElementById('backend-ping');
+            const dot = document.getElementById('ai-status-dot');
+
+            statusText.innerText = text;
+            if (isOnline) {
+                statusBar.className = "h-full bg-cyan-400 w-[100%] shadow-[0_0_10px_#00f2ff]";
+                ping.className = "text-green-400";
+                ping.innerText = "OK";
+                dot.className = "w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_green]";
+            } else {
+                statusBar.className = "h-full bg-red-500 w-[100%] shadow-[0_0_10px_red]";
+                ping.className = "text-red-400";
+                ping.innerText = "ERR";
+                dot.className = "w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_red]";
+            }
+        }
+
+        // --- Authentication ---
+        function showAuthModal() {
+            document.getElementById('auth-modal').classList.remove('hidden');
+        }
+
+        function hideAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        function logout() {
+            localStorage.removeItem('nova_api_key');
+            location.reload();
+        }
+
+        async function handleAuth(e, actionType) {
+            e.preventDefault();
+            if(!backendUrl) return alert("System offline. Please wait for tunnel connection.");
+
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const errorDiv = document.getElementById('auth-error');
+            
+            errorDiv.classList.add('hidden');
+            
+            try {
+                const endpoint = actionType === 'login' ? '/login' : '/signup';
+                const res = await fetch(`${backendUrl}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    apiKey = data.api_key;
+                    localStorage.setItem('nova_api_key', apiKey);
+                    hideAuthModal();
+                    document.getElementById('operator-display').innerText = email.split('@')[0].toUpperCase();
+                    loadModules();
+                    enableInput(true);
+                } else {
+                    errorDiv.innerText = data.error || "Authentication failed.";
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorDiv.innerText = "Network Error: Cannot reach AI Core.";
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        // --- Modules (PDFs) Management ---
+        async function loadModules() {
+            if(!backendUrl || !apiKey) return;
+            const list = document.getElementById('chapter-list');
+            list.innerHTML = '<div class="p-6 text-center text-xs fira-code text-cyan-500/40 loading-dot">Syncing</div>';
+
+            try {
+                const res = await fetch(`${backendUrl}/list_pdfs`, {
+                    headers: { 'x-api-key': apiKey }
+                });
+                const data = await res.json();
+                
+                list.innerHTML = '';
+                
+                if(data.pdfs && data.pdfs.length > 0) {
+                    data.pdfs.forEach((filename, index) => renderModuleItem(filename, index, list));
+                } else {
+                    list.innerHTML = '<div class="p-6 text-center text-xs fira-code text-cyan-500/40">No modules found. Upload to begin.</div>';
+                }
+            } catch (err) {
+                list.innerHTML = '<div class="p-6 text-center text-xs fira-code text-red-500/50">Sync Failed.</div>';
+            }
+        }
+
+        function renderModuleItem(filename, index, listContainer) {
+            const delay = 0.1 + (index * 0.1); 
+            const div = document.createElement('div');
+            // Clean up UUID for display if present
+            const displayName = filename.includes('_') ? filename.split('_').slice(1).join('_') : filename;
+
+            div.className = `chapter-item px-6 py-4 border-b border-cyan-900/30 group opacity-0`;
+            div.style.animation = `slideInRight 0.5s cubic-bezier(0.1, 0.8, 0.3, 1) ${delay}s forwards`;
+            
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-1">
+                    <span class="orbitron text-sm font-bold text-white group-hover:text-cyan-300 transition-colors truncate w-3/4" title="${displayName}">${displayName}</span>
+                    <span class="fira-code text-[9px] text-green-400 flex items-center gap-1">
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> READY
+                    </span>
+                </div>
+                <div class="fira-code text-xs text-cyan-500/80 group-hover:text-cyan-400 flex justify-between items-center">
+                    <span>PDF Document</span>
+                    <button class="text-red-500 hover:text-red-300" onclick="deleteModule(event, '${filename}')" title="Delete">
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+            `;
+            
+            div.onclick = () => selectModule(filename, displayName, div);
+            listContainer.appendChild(div);
+        }
+
+        // --- Native File Upload Trigger ---
+        function triggerPDFUpload() {
+            document.getElementById('file-upload').click();
+        }
+
+        async function uploadPDF(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            await processFileUpload(file);
+            // Reset input so the same file can be uploaded again if needed
+            event.target.value = '';
+        }
+
+        async function processFileUpload(file) {
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            // Optimistic UI
+            const list = document.getElementById('chapter-list');
+            list.innerHTML = '<div class="p-6 text-center text-xs fira-code text-cyan-400 loading-dot">Uploading Data Stream</div>' + list.innerHTML;
+
+            try {
+                const res = await fetch(`${backendUrl}/upload`, {
+                    method: 'POST',
+                    headers: { 'x-api-key': apiKey },
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if(data.status === 'stored permanently') {
+                    loadModules(); // Reload whole list
+                } else {
+                    alert(data.error || "Upload failed");
+                    loadModules();
+                }
+            } catch (err) {
+                alert("Network Error during upload");
+                loadModules();
+            }
+        }
+
+        async function deleteModule(event, filename) {
+            event.stopPropagation(); // Prevent triggering selectModule
+            if(!confirm("Purge this module from the matrix?")) return;
+
+            try {
+                await fetch(`${backendUrl}/delete_pdf/${filename}`, {
+                    method: 'DELETE',
+                    headers: { 'x-api-key': apiKey }
+                });
+                
+                if(activeModule === filename) {
+                    activeModule = null;
+                    document.getElementById('active-chapter-display').innerText = "Awaiting Selection...";
+                }
+                loadModules();
+            } catch (err) {
+                console.error("Failed to delete", err);
+            }
+        }
+
+        // --- STT (Speech to Text) Logic ---
+        // Expose native callbacks for Android
+        window.onAndroidSpeechResult = function(text) {
+            // We set an invisible input or directly stream it, since we removed the input bar earlier
+            // Actually, we need to pass this text directly to fetchAIStream!
+            stopListening();
+            // Since we removed input bar conceptually but technically it's still in the DOM:
+            const input = document.getElementById('chat-input');
+            if (input) input.value = text;
+            handleSend(text); // Adjusted handleSend to take text param
+        };
+
+        window.onAndroidSpeechError = function(error) {
+            console.error("Android Speech Error:", error);
+            stopListening();
+        };
+
+        function toggleListening() {
+            if (isTyping) return;
+            
+            // Stop any ongoing TTS
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            
+            // Prefer Android Native Speech Recognition
+            if (window.AndroidLauncher) {
+                isListening = true;
+                document.getElementById('core-btn').classList.add('listening');
+                window.AndroidLauncher.startAndroidVoiceRecognition();
+                return;
+            }
+
+            if (!recognition) {
+                alert("Speech recognition is not supported in this environment.");
+                return;
+            }
+            
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function stopListening() {
+            isListening = false;
+            document.getElementById('core-btn').classList.remove('listening');
+            const input = document.getElementById('chat-input');
+            if(input) {
+                input.placeholder = "Type query or click the core to speak...";
+                input.disabled = false;
+            }
+        }
+
+        // --- TTS (Text to Speech) Logic ---
+        function speakResponse(text) {
+            const cleanText = text.replace(/<[^>]*>?/gm, '').replace(/\*/g, '');
+            if (!cleanText.trim()) return;
+
+            const core = document.getElementById('ai-core-container');
+            const waves = document.getElementById('voice-waves');
+
+            if (window.AndroidLauncher && window.AndroidLauncher.isNativeTtsAvailable()) {
+                core.classList.add('ai-speaking');
+                waves.style.opacity = '1';
+                
+                window.AndroidLauncher.speak(cleanText);
+
+                // Estimate duration since Android TextToSpeech doesn't have an onDone callback bridging yet
+                const words = cleanText.split(' ').length;
+                const estimatedMs = Math.max(2000, (words / 2.5) * 1000);
+                setTimeout(() => {
+                    core.classList.remove('ai-speaking');
+                    waves.style.opacity = '0';
+                }, estimatedMs);
+                return;
+            }
+
+            // Fallback to Web Speech API
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel(); // Cancel any ongoing speech
+
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            
+            utterance.onstart = function() {
+                const core = document.getElementById('ai-core-container');
+                const waves = document.getElementById('voice-waves');
+                core.classList.add('ai-speaking');
+                waves.style.opacity = '1';
+            };
+
+            const stopAnimation = function() {
+                const core = document.getElementById('ai-core-container');
+                const waves = document.getElementById('voice-waves');
+                core.classList.remove('ai-speaking');
+                waves.style.opacity = '0';
+            };
+
+            utterance.onend = stopAnimation;
+            utterance.onerror = stopAnimation;
+
+            // Optional voice settings adjustments
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- Interaction Logic (Streaming) ---
+        function enableInput(enabled) {
+            const input = document.getElementById('chat-input');
+            const btn = document.getElementById('btn-send');
+            input.disabled = !enabled;
+            btn.disabled = !enabled;
+            if(enabled && !isListening) {
+                input.placeholder = "Type query or click the core to speak...";
+                input.focus();
+            } else if (!enabled) {
+                input.placeholder = "Processing command...";
+            }
+        }
+
+        async function handleSend(overrideText = null) {
+            if (isTyping) return;
+            
+            if (!backendUrl) {
+                addMessage('system', 'ERROR: Core Server linkage offline. Check database tunnel.');
+                return;
+            }
+            if (!apiKey) {
+                addMessage('system', 'ERROR: Authentication token missing. Please reload.');
+                return;
+            }
+            
+            // Stop TTS if user initiates a new message
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            
+            const input = document.getElementById('chat-input');
+            const text = overrideText || (input ? input.value.trim() : '');
+            
+            if (text === '') return;
+            if (!activeModule) {
+                addMessage('system', 'ERROR: Please select a PDF module from the sidebar before querying.');
+                return;
+            }
+            
+            // Display User Message
+            addMessage('user', text);
+            if (input) input.value = '';
+            
+            // Trigger AI Stream
+            await fetchAIStream(text);
+        }
+
+        async function fetchAIStream(question) {
+            isTyping = true;
+            enableInput(false);
+            
+            const normalIcon = document.getElementById('core-icon-normal');
+            const scanningIcon = document.getElementById('core-icon-scanning');
+            
+            // Core scanning state (Fetching - no speaking animation yet)
+            normalIcon.classList.replace('opacity-100', 'opacity-0');
+            normalIcon.classList.replace('scale-100', 'scale-75');
+            scanningIcon.classList.replace('opacity-0', 'opacity-100');
+            scanningIcon.classList.replace('scale-75', 'scale-100');
+
+            let accumulatedResponse = "";
+
+            try {
+                const response = await fetch(`${backendUrl}/ask`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey
+                    },
+                    body: JSON.stringify({ question: question, pdf: activeModule })
+                });
+
+                // Create empty message box for AI
+                const messageId = `msg-${Date.now()}`;
+                addMessage('nova', '', messageId);
+                const contentDiv = document.getElementById(`content-${messageId}`);
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    contentDiv.innerHTML = `<span class="text-red-400">ERROR: ${errData.error || response.statusText}</span>`;
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                
+                let buffer = "";
+                
+                // --- ULTRA-SMOOTH DOM RENDER BUFFER FLAGS ---
+                let renderBuffer = "";
+                let lastRenderTime = 0;
+                const RENDER_INTERVAL = 50; // ms between DOM flushes
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const rawChunk = decoder.decode(value, { stream: true });
+                    buffer += rawChunk;
+
+                    // Support SSE format if backend uses it
+                    if (buffer.includes('data:')) {
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop(); // save incomplete line
+
+                        for (let line of lines) {
+                            line = line.trim();
+                            if (!line) continue;
+                            if (line.startsWith('data:')) line = line.substring(5).trim();
+                            if (line === '[DONE]') continue;
+                            
+                            try {
+                                const parsed = JSON.parse(line);
+                                const token = parsed.response || parsed.message || parsed.content || "";
+                                accumulatedResponse += token;
+                                renderBuffer += token;
+                            } catch (e) {
+                                // If it fails JSON parse but isn't empty, it might be raw text from a different backend format
+                                if (line.length > 0 && !line.includes('{"')) {
+                                    accumulatedResponse += line;
+                                    renderBuffer += line;
+                                }
+                            }
+                        }
+                    } else {
+                        // Standard raw streaming, no SSE wrappers
+                        accumulatedResponse += buffer;
+                        renderBuffer += buffer;
+                        buffer = ""; // flush buffer
+                    }
+
+                    // --- SMOOTH RENDER THROTTLE ---
+                    const now = Date.now();
+                    if (now - lastRenderTime > RENDER_INTERVAL) {
+                        contentDiv.innerHTML += renderBuffer.replace(/\n/g, '<br>');
+                        renderBuffer = "";
+                        lastRenderTime = now;
+
+                        // Auto-scroll inside throttle
+                        const box = document.getElementById('chat-box');
+                        box.scrollTop = box.scrollHeight;
+
+                        // Yield execution to the browser to prevent UI lockup on gigantic JSON streams
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                }
+                
+                // Final flush of SSE TCP-buffer if anything is left
+                if (buffer.trim()) {
+                    let finalLine = buffer.trim();
+                    if (finalLine.startsWith('data:')) finalLine = finalLine.substring(5).trim();
+                    try {
+                        const parsed = JSON.parse(finalLine);
+                        const token = parsed.response || parsed.message || parsed.content || "";
+                        accumulatedResponse += token;
+                        renderBuffer += token;
+                    } catch(e) {
+                         if (!finalLine.includes('{"')) {
+                             accumulatedResponse += finalLine;
+                             renderBuffer += finalLine;
+                         }
+                    }
+                }
+
+                // Final flush of smooth renderBuffer to the DOM after loop ends
+                if (renderBuffer) {
+                    contentDiv.innerHTML += renderBuffer.replace(/\n/g, '<br>');
+                    const box = document.getElementById('chat-box');
+                    box.scrollTop = box.scrollHeight;
+                }
+                
+                // Triggers text-to-speech and its synchronized animations 
+                speakResponse(accumulatedResponse);
+
+            } catch (err) {
+                const messageId = `msg-${Date.now()}`;
+                addMessage('nova', '', messageId);
+                const contentDiv = document.getElementById(`content-${messageId}`);
+                contentDiv.innerHTML += `<br><span class="text-red-400">CONNECTION INTERRUPTED</span>`;
+            } finally {
+                // Restore core state
+                scanningIcon.classList.replace('opacity-100', 'opacity-0');
+                scanningIcon.classList.replace('scale-100', 'scale-75');
+                normalIcon.classList.replace('opacity-0', 'opacity-100');
+                normalIcon.classList.replace('scale-75', 'scale-100');
+                
+                isTyping = false;
+                enableInput(true);
+            }
+        }
+
+        function addMessage(sender, text, specificId = null) {
+            const box = document.getElementById('chat-box');
+
+            // Clear chat box so only the active message (or stream) is shown
+            box.innerHTML = '';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex flex-col items-center justify-center w-full h-full opacity-0 transform translate-y-4 transition-all duration-300`;
+            
+            let textColor = sender === 'user' ? 'text-yellow-400' : 'text-cyan-300';
+            let textSize = sender === 'system' ? 'text-base opacity-70' : 'text-xl md:text-2xl';
+            if (sender === 'system') textColor = 'text-green-400';
+
+            const contentId = specificId ? `id="content-${specificId}"` : '';
+
+            msgDiv.innerHTML = `
+                <div ${contentId} class="text-center orbitron ${textSize} leading-relaxed ${textColor} drop-shadow-[0_0_10px_currentColor] max-w-3xl px-4 py-8">
+                    ${text}
+                </div>
+            `;
+
+            box.appendChild(msgDiv);
+            
+            // Trigger animation
+            setTimeout(() => {
+                msgDiv.style.opacity = '1';
+                msgDiv.style.transform = 'translateY(0)';
+            }, 50);
+        }
+
+    </script>
+</body>
+
+</html>

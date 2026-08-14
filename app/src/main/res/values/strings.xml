@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NOVA</string>
+    <string name="permission_required">Permission Required</string>
+    <string name="storage_permission_message">This app needs storage access for app management features. Please grant the permission.</string>
+    <string name="microphone_permission_message">This app needs microphone access for voice recording features. Please grant the permission.</string>
+    <string name="permission_denied">Permission Denied</string>
+    <string name="storage_permission_denied_message">Storage permission is required for app management to work properly.</string>
+    <string name="microphone_permission_denied_message">Microphone permission is required for voice recording features to work properly.</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="settings">Settings</string>
+    <string name="open_settings">Open Settings</string>
+    <!-- Strings for Android Launcher -->
+    <string name="launcher_title">Android Launcher</string>
+    <string name="app_store">App Store</string>
+    <string name="settings_app">Settings</string>
+    <string name="nexus_app">Nexus</string>
+    <string name="battery_level">Battery Level</string>
+    <string name="robot_ip">Robot IP</string>
+    <string name="about_device">About Device</string>
+    <string name="system_reset">System Reset</string>
+    <string name="factory_reset">Factory Reset</string>
+    <string name="confirm_action">Confirm Action</string>
+    <string name="are_you_sure">Are you sure?</string>
+    <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="download">Download</string>
+    <string name="open">Open</string>
+    <string name="delete">Delete</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="install">Install</string>
+    <string name="installed_apps">Installed Apps</string>
+    <string name="all_apps">All Apps</string>
+    <string name="search_apps">Search for apps...</string>
+    <string name="no_apps_found">No apps found</string>
+    <string name="no_apps_available">No apps available</string>
+    <string name="no_apps_installed">No apps installed yet</string>
+    <string name="download_successful">Downloaded successfully!</string>
+    <string name="download_failed">Download failed</string>
+    <string name="uninstall_successful">Uninstalled successfully!</string>
+    <string name="factory_reset_complete">Factory reset complete</string>
+    <string name="loading">Loading...</string>
+    <string name="error_loading_ip">Error loading IP addresses</string>
+    <string name="no_ip_found">No IP addresses found</string>
+    <!-- Accessibility Service Strings -->
+    <string name="accessibility_description">Nova App Lock Service monitors for protected apps to provide security.</string>
+</resources>

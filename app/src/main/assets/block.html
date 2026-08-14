@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Robotics Block Studio | Visual Coding</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Blockly -->
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+    <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
+    <script src="https://unpkg.com/blockly/msg/en.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            background-color: #020617; 
+            background-image: 
+                linear-gradient(rgba(8, 247, 254, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(8, 247, 254, 0.04) 1px, transparent 1px);
+            background-size: 20px 20px;
+            touch-action: none; 
+        }
+        
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Customizing Blockly UI injection to match N.O.V.A. theme */
+        .blocklySvg {
+            background-color: transparent !important;
+            border: none;
+        }
+        .blocklyToolboxDiv {
+            background-color: rgba(2, 6, 23, 0.8) !important;
+            border-right: 1px solid rgba(8, 247, 254, 0.2) !important;
+            padding-top: 10px;
+            box-shadow: 2px 0 10px rgba(8, 247, 254, 0.1);
+            backdrop-filter: blur(4px);
+        }
+        .blocklyTreeLabel {
+            font-family: 'Inter', sans-serif !important;
+            color: #08f7fe !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .blocklyTreeRow:hover {
+            background-color: rgba(8, 247, 254, 0.1) !important; 
+        }
+        .blocklyTreeSelected .blocklyTreeLabel {
+            color: #fff !important; 
+            text-shadow: 0 0 8px #08f7fe;
+        }
+        .blocklyFlyoutBackground {
+            fill: #020617 !important; 
+            fill-opacity: 0.95 !important;
+        }
+
+        /* --- Fix Blockly Text Alignment & Styling --- */
+        .blocklyText, .blocklyHtmlInput {
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+        }
+        
+        text.blocklyText {
+            transform: translateY(0.5px); 
+        }
+
+        .blocklyDropdownText {
+            font-family: 'Inter', sans-serif !important;
+            transform: translateY(-1px);
+        }
+        
+        /* HUD Terminal Text */
+        #console-output {
+            text-shadow: 0 0 3px rgba(8, 247, 254, 0.3);
+        }
+        #console-output p {
+            margin: 0.35rem 0;
+            border-bottom: 1px solid rgba(8, 247, 254, 0.1);
+            padding-bottom: 0.35rem;
+        }
+        #console-output p .timestamp {
+            color: #0ea5e9;
+            margin-right: 0.5rem;
+        }
+        #console-output p .cmd {
+            color: #38bdf8;
+            font-weight: 600;
+        }
+        #console-output p .info {
+            color: #7dd3fc;
+        }
+
+        /* Glowing UI HUD Buttons */
+        .hud-btn {
+            border: 1px solid rgba(8, 247, 254, 0.3);
+            background: rgba(8, 247, 254, 0.05);
+            color: #08f7fe;
+            box-shadow: inset 0 0 10px rgba(8, 247, 254, 0.05);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .hud-btn:hover {
+            background: rgba(8, 247, 254, 0.2);
+            border-color: #08f7fe;
+            box-shadow: inset 0 0 15px rgba(8, 247, 254, 0.2), 0 0 10px rgba(8, 247, 254, 0.2);
+            color: #fff;
+        }
+        .hud-btn-active {
+            background: rgba(8, 247, 254, 0.2);
+            border-color: #08f7fe;
+            color: #fff;
+            box-shadow: inset 0 0 20px rgba(8, 247, 254, 0.3), 0 0 10px rgba(8, 247, 254, 0.2);
+        }
+
+        .hud-header {
+            background: linear-gradient(180deg, rgba(2, 6, 23, 0.95) 0%, rgba(2, 6, 23, 0.8) 100%);
+            border-bottom: 1px solid rgba(8, 247, 254, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(8, 247, 254, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Status LED */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .status-online { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
+        .status-offline { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+        /* Hide all scrollbars */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        * {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .blocklyScrollbarBackground,
+        .blocklyScrollbarHandle {
+            display: none !important;
+        }
+
+        @media (max-width: 640px) {
+            .blocklyToolboxDiv {
+                width: 85px !important;
+            }
+            .blocklyTreeLabel {
+                font-size: 10px !important;
+            }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col text-slate-200">
+
+    <header class="hud-header flex flex-col sm:flex-row items-center justify-between p-3 gap-3 shrink-0 z-10">
+        <div class="flex items-center justify-between w-full sm:w-auto">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="window.location.href='learn.html'" class="hud-btn w-8 h-8 sm:w-9 sm:h-9 rounded-md flex items-center justify-center shrink-0" title="Return to Previous Protocol">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="text-[#08f7fe] flex items-center justify-center filter drop-shadow-[0_0_8px_rgba(8,247,254,0.8)] ml-1">
+                    <i class="fa-solid fa-crosshairs text-2xl animate-spin-slow" style="animation-duration: 8s;"></i>
+                </div>
+                <h1 class="text-xl font-bold tracking-widest text-white uppercase" style="text-shadow: 0 0 10px #08f7fe;">N.O.V.A. <span class="text-[#08f7fe] text-[10px] font-medium tracking-[0.2em] block -mt-1 opacity-80">Core Interface</span></h1>
+            </div>
+            
+            <div class="flex items-center gap-2 sm:hidden">
+                <!-- Status Indicator Mobile -->
+                <div class="flex items-center px-2 py-1 bg-slate-900/50 rounded border border-[#08f7fe]/20">
+                   <span id="mobileStatusDot" class="status-dot status-offline"></span>
+                </div>
+                <button onclick="goHome()" class="hud-btn p-2 rounded-md" title="Home Position">
+                    <i class="fa-solid fa-house"></i>
+                </button>
+                <button onclick="clearWorkspace()" class="hud-btn p-2 rounded-md" title="Purge Matrix">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+                <button onclick="runSimulation()" id="runBtnMobile" class="hud-btn px-4 py-2 rounded-md font-bold text-[#08f7fe]">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-center flex-wrap sm:flex-nowrap">
+            <!-- Uplink Status Indicator Desktop -->
+            <div id="uplinkIndicator" class="hidden sm:flex items-center px-4 py-1.5 border border-[#08f7fe]/30 rounded bg-slate-950/40 text-[10px] uppercase tracking-widest font-bold text-[#08f7fe]/80 mr-2">
+                <span id="desktopStatusDot" class="status-dot status-offline mr-2"></span>
+                Link: <span id="statusText" class="ml-1 text-red-500">Offline</span>
+            </div>
+
+            <input type="hidden" id="robotIp" value="192.168.4.1">
+
+            <button id="tabBlocks" onclick="showWorkspace()" class="flex-1 sm:flex-none hud-btn hud-btn-active px-6 py-1.5 rounded-md text-sm font-medium flex items-center justify-center uppercase tracking-widest">
+                <i class="fa-solid fa-network-wired mr-2"></i>Logic
+            </button>
+            <button id="tabTerminal" onclick="showTerminal()" class="flex-1 sm:flex-none hud-btn px-6 py-1.5 rounded-md text-sm font-medium flex items-center justify-center uppercase tracking-widest">
+                <i class="fa-solid fa-terminal mr-2"></i>Terminal
+            </button>
+        </div>
+
+        <div class="hidden sm:flex items-center gap-3">
+            <button onclick="goHome()" class="hud-btn w-10 h-10 rounded-md flex items-center justify-center" title="Home Position">
+                <i class="fa-solid fa-house"></i>
+            </button>
+            <button onclick="clearWorkspace()" class="hud-btn w-10 h-10 rounded-md flex items-center justify-center" title="Delete Workspace Logic">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+            <button onclick="runSimulation()" id="runBtnDesktop" class="hud-btn px-6 py-1.5 rounded-md text-sm font-bold flex items-center uppercase tracking-wider shadow-[0_0_15px_rgba(8,247,254,0.3)]">
+                <i class="fa-solid fa-play mr-2"></i>Play
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 relative overflow-hidden w-full h-full flex flex-col">
+        <div id="blocklyArea" class="flex-1 w-full relative" style="display: block;">
+            <div id="blocklyDiv" class="absolute top-0 left-0 w-full h-full"></div>
+        </div>
+
+        <div id="terminalArea" class="flex-1 w-full bg-[#020617]/90 backdrop-blur-md flex-col border-t border-[#08f7fe]/20" style="display: none;">
+            <div class="bg-[#020617]/80 px-4 sm:px-6 py-3 flex items-center justify-between border-b border-[#08f7fe]/30 shrink-0">
+                <span class="text-sm font-bold text-[#08f7fe] uppercase tracking-widest flex items-center" style="text-shadow: 0 0 8px rgba(8,247,254,0.5);">
+                    <i class="fa-solid fa-terminal mr-2"></i>N.O.V.A. Command Output
+                </span>
+                <button onclick="clearConsole()" class="hud-btn px-3 py-1.5 rounded-md text-xs font-medium flex items-center uppercase tracking-wider">
+                    <i class="fa-solid fa-eraser sm:mr-2"></i><span class="hidden sm:inline">Clear Log</span>
+                </button>
+            </div>
+            <div class="flex-1 p-4 sm:p-6 overflow-y-auto code-font text-[11px] sm:text-sm" id="console-output">
+                <p class="text-[#08f7fe] italic opacity-80"><span class="info">N.O.V.A. core standing by. Logic uplink required for execution...</span></p>
+            </div>
+        </div>
+    </main>
+
+    <xml id="toolbox" style="display: none">
+        <category name="Movement" colour="#10b981">
+            <block type="robot_move_time">
+                <value name="SECONDS">
+                    <shadow type="math_number"><field name="NUM">1</field></shadow>
+                </value>
+            </block>
+            <block type="robot_move_continuous"></block>
+            <block type="robot_turn">
+                <value name="DEGREES">
+                    <shadow type="math_number"><field name="NUM">90</field></shadow>
+                </value>
+            </block>
+            <block type="robot_set_speed">
+                <value name="SPEED">
+                    <shadow type="math_number"><field name="NUM">180</field></shadow>
+                </value>
+            </block>
+        </category>
+        <category name="Joints & LEDs" colour="#06b6d4">
+            <block type="robot_set_joint">
+                <value name="ANGLE">
+                    <shadow type="math_number"><field name="NUM">90</field></shadow>
+                </value>
+            </block>
+            <block type="robot_set_rgb">
+                <value name="R"><shadow type="math_number"><field name="NUM">0</field></shadow></value>
+                <value name="G"><shadow type="math_number"><field name="NUM">0</field></shadow></value>
+                <value name="B"><shadow type="math_number"><field name="NUM">255</field></shadow></value>
+            </block>
+        </category>
+        <sep></sep>
+        <category name="Logic" colour="#3b82f6">
+            <block type="controls_if"></block>
+            <block type="logic_compare"></block>
+        </category>
+        <category name="Loops" colour="#8b5cf6">
+            <block type="controls_repeat_ext">
+                <value name="TIMES">
+                    <shadow type="math_number"><field name="NUM">10</field></shadow>
+                </value>
+            </block>
+        </category>
+        <category name="Math" colour="#f59e0b">
+            <block type="math_number"></block>
+            <block type="math_arithmetic"></block>
+        </category>
+    </xml>
+
+    <script>
+        // --- 1. Define Custom Blocks ---
+        Blockly.defineBlocksWithJsonArray([
+            {
+                "type": "robot_move_time",
+                "message0": "Move %1 for %2 sec",
+                "args0": [
+                    {
+                        "type": "field_dropdown",
+                        "name": "DIRECTION",
+                        "options": [ ["Forward", "FORWARD"], ["Backward", "BACKWARD"], ["Left", "LEFT"], ["Right", "RIGHT"] ]
+                    },
+                    { "type": "input_value", "name": "SECONDS", "check": "Number" }
+                ],
+                "previousStatement": null,
+                "nextStatement": null,
+                "colour": "#10b981"
+            },
+            {
+                "type": "robot_move_continuous",
+                "message0": "Maneuver: %1",
+                "args0": [
+                    {
+                        "type": "field_dropdown",
+                        "name": "DIRECTION",
+                        "options": [ ["Forward", "FORWARD"], ["Backward", "BACKWARD"], ["Left", "LEFT"], ["Right", "RIGHT"], ["Stop", "STOP"] ]
+                    }
+                ],
+                "previousStatement": null,
+                "nextStatement": null,
+                "colour": "#10b981"
+            },
+            {
+                "type": "robot_turn",
+                "message0": "Turn %1 by %2°",
+                "args0": [
+                    {
+                        "type": "field_dropdown",
+                        "name": "DIRECTION",
+                        "options": [ ["Left", "LEFT"], ["Right", "RIGHT"] ]
+                    },
+                    { "type": "input_value", "name": "DEGREES", "check": "Number" }
+                ],
+                "previousStatement": null,
+                "nextStatement": null,
+                "colour": "#10b981"
+            },
+            {
+                "type": "robot_set_joint",
+                "message0": "Joint %1: %2°",
+                "args0": [
+                    {
+                        "type": "field_dropdown",
+                        "name": "JOINT",
+                        "options": [
+                            ["S1", "1"], ["S2", "2"], ["S3", "3"], ["S4", "4"], ["S5", "5"]
+                        ]
+                    },
+                    { "type": "input_value", "name": "ANGLE", "check": "Number" }
+                ],
+                "previousStatement": null,
+                "nextStatement": null,
+                "colour": "#06b6d4"
+            },
+            {
+                "type": "robot_set_speed",
+                "message0": "Set Speed: %1",
+                "args0": [ { "type": "input_value", "name": "SPEED", "check": "Number" } ],
+                "previousStatement": null,
+                "nextStatement": null,
+                "colour": "#10b981"
+            },
+            {
+                "type": "robot_set_rgb",
+                "message0": "LEDs R:%1 G:%2 B:%3",
+                "args0": [
+                    { "type": "input_value", "name": "R", "check": "Number" },
+                    { "type": "input_value", "name": "G", "check": "Number" },
+                    { "type": "input_value", "name": "B", "check": "Number" }
+                ],
+                "previousStatement": null,
+                "nextStatement": null,
+                "colour": "#06b6d4"
+            }
+        ]);
+
+        // --- 2. Setup JavaScript Generator ---
+        Blockly.JavaScript.forBlock['robot_move_time'] = function(block, generator) {
+            const dir = block.getFieldValue('DIRECTION');
+            const secs = generator.valueToCode(block, 'SECONDS', generator.ORDER_ATOMIC) || '0';
+            return `await robot.moveTimed("${dir}", ${secs});\n`;
+        };
+        Blockly.JavaScript.forBlock['robot_move_continuous'] = function(block, generator) {
+            const dir = block.getFieldValue('DIRECTION');
+            return `await robot.move("${dir}");\n`;
+        };
+        Blockly.JavaScript.forBlock['robot_turn'] = function(block, generator) {
+            const dir = block.getFieldValue('DIRECTION');
+            const deg = generator.valueToCode(block, 'DEGREES', generator.ORDER_ATOMIC) || '0';
+            return `await robot.turn("${dir}", ${deg});\n`;
+        };
+        Blockly.JavaScript.forBlock['robot_set_joint'] = function(block, generator) {
+            const joint = block.getFieldValue('JOINT');
+            const angle = generator.valueToCode(block, 'ANGLE', generator.ORDER_ATOMIC) || '90';
+            return `await robot.setAngle("${joint}", ${angle});\n`;
+        };
+        Blockly.JavaScript.forBlock['robot_set_speed'] = function(block, generator) {
+            const speed = generator.valueToCode(block, 'SPEED', generator.ORDER_ATOMIC) || '180';
+            return `await robot.setSpeed(${speed});\n`;
+        };
+        Blockly.JavaScript.forBlock['robot_set_rgb'] = function(block, generator) {
+            const r = generator.valueToCode(block, 'R', generator.ORDER_ATOMIC) || '0';
+            const g = generator.valueToCode(block, 'G', generator.ORDER_ATOMIC) || '0';
+            const b = generator.valueToCode(block, 'B', generator.ORDER_ATOMIC) || '255';
+            return `await robot.setRGB(${r}, ${g}, ${b});\n`;
+        };
+
+        let workspace;
+        const roboDarkTheme = Blockly.Theme.defineTheme('roboDark', {
+            'base': Blockly.Themes.Classic,
+            'componentStyles': {
+                'workspaceBackgroundColour': 'transparent',
+                'toolboxBackgroundColour': 'rgba(2, 6, 23, 0.8)',
+                'toolboxForegroundColour': '#08f7fe',
+                'flyoutBackgroundColour': '#020617',
+                'flyoutForegroundColour': '#08f7fe',
+                'insertionMarkerColour': '#fff',
+                'insertionMarkerOpacity': 0.3,
+                'cursorColour': '#08f7fe'
+            },
+            'fontStyle': {
+                'family': "'Inter', sans-serif",
+                'weight': '600',
+                'size': 11
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            document.fonts.ready.then(function() {
+                setTimeout(() => {
+                    workspace = Blockly.inject('blocklyDiv', {
+                        toolbox: document.getElementById('toolbox'),
+                        theme: roboDarkTheme,
+                        grid: { spacing: 25, length: 2, colour: 'rgba(8, 247, 254, 0.15)', snap: true },
+                        zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 },
+                        move: { scrollbars: false, drag: true, wheel: true },
+                        trashcan: true
+                    });
+                    const defaultXml = `<xml xmlns="https://developers.google.com/blockly/xml">
+                        <block type="robot_move_time" x="20" y="20">
+                            <field name="DIRECTION">FORWARD</field>
+                            <value name="SECONDS"><shadow type="math_number"><field name="NUM">2</field></shadow></value>
+                        </block>
+                    </xml>`;
+                    Blockly.Xml.domToWorkspace(Blockly.utils.xml.textToDom(defaultXml), workspace);
+                    showWorkspace();
+                    const blocklyArea = document.getElementById('blocklyArea');
+                    const blocklyDiv = document.getElementById('blocklyDiv');
+                    const resizeObserver = new ResizeObserver(() => {
+                        if (blocklyArea.style.display !== 'none') {
+                            blocklyDiv.style.width = blocklyArea.offsetWidth + 'px';
+                            blocklyDiv.style.height = blocklyArea.offsetHeight + 'px';
+                            Blockly.svgResize(workspace);
+                        }
+                    });
+                    resizeObserver.observe(blocklyArea);
+                    
+                    // Start Heartbeat check for robot connection
+                    setInterval(findRobotIpInBackground, 2000);
+                    setInterval(updateConnectionStatus, 3000);
+                    updateConnectionStatus();
+
+                }, 100);
+            });
+        });
+
+        const terminalOut = document.getElementById('console-output');
+        function logTerminal(message, type = 'info') {
+            const p = document.createElement('p');
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            let colorClass = type === 'cmd' ? "cmd" : (type === 'error' ? "text-red-500 font-medium" : "info");
+            p.innerHTML = `<span class="timestamp">[${timeStr}]</span> <span class="${colorClass}">${message}</span>`;
+            terminalOut.appendChild(p);
+            terminalOut.scrollTop = terminalOut.scrollHeight;
+        }
+
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+        
+        let dynamicRobotIp = "nova-robot.local";
+        if (window.AndroidLauncher && typeof window.AndroidLauncher.getSavedRobotIP === 'function') {
+            dynamicRobotIp = window.AndroidLauncher.getSavedRobotIP();
+        }
+
+        async function findRobotIpInBackground() {
+            if (window.AndroidLauncher && typeof window.AndroidLauncher.getSavedRobotIP === 'function') {
+                dynamicRobotIp = window.AndroidLauncher.getSavedRobotIP();
+            }
+            document.getElementById('robotIp').value = dynamicRobotIp;
+        }
+        
+        // --- WebSocket Management ---
+        let ws = null;
+        let wsConnected = false;
+
+        function connectWebSocket(ip) {
+            const wsUrl = `ws://${ip}/ws`;
+            
+            // Check if already connected or connecting to the correct IP
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                if (ws.url !== wsUrl) {
+                    ws.close();
+                } else {
+                    return; 
+                }
+            }
+
+            try {
+                ws = new WebSocket(wsUrl);
+                ws.onopen = () => {
+                    wsConnected = true;
+                    logTerminal("WebSocket Uplink Established", "info");
+                };
+                ws.onclose = () => {
+                    wsConnected = false;
+                };
+                ws.onerror = (err) => {
+                    wsConnected = false;
+                };
+            } catch(e) {
+                wsConnected = false;
+            }
+        }
+
+        function sendWsCommand(data) {
+            if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(data));
+            } else {
+                logTerminal("WARNING: WebSocket Offline. Command dropped.", "error");
+            }
+        }
+
+        // --- Connection Check Logic ---
+        async function updateConnectionStatus() {
+            const ip = document.getElementById('robotIp').value || dynamicRobotIp;
+            const statusText = document.getElementById('statusText');
+            const dDot = document.getElementById('desktopStatusDot');
+            const mDot = document.getElementById('mobileStatusDot');
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+                let res = await fetch(`http://${ip}/status`, { signal: controller.signal });
+                let data = await res.json();
+                clearTimeout(timeoutId);
+
+                // Updated condition based on new C++ JSON format: "status": "ok"
+                if (data && data.status === "ok") {
+                    // Sync IP if it changed
+                    if (data.ip_address && data.ip_address !== dynamicRobotIp && window.AndroidLauncher && typeof window.AndroidLauncher.saveRobotIP === 'function') {
+                        window.AndroidLauncher.saveRobotIP(data.ip_address);
+                        dynamicRobotIp = data.ip_address;
+                    }
+
+                    statusText.innerText = data.wifi_mode === "station" ? "Home Network" : "AP Mode";
+                    statusText.className = "ml-1 text-emerald-400";
+                    [dDot, mDot].forEach(dot => {
+                        dot.classList.remove('status-offline');
+                        dot.classList.add('status-online');
+                    });
+
+                    // Ensure WebSocket is linked up once HTTP confirms IP is alive
+                    connectWebSocket(ip);
+
+                } else {
+                    throw new Error("Invalid status");
+                }
+            } catch (e) {
+                statusText.innerText = "Offline";
+                statusText.className = "ml-1 text-red-500";
+                [dDot, mDot].forEach(dot => {
+                    dot.classList.remove('status-online');
+                    dot.classList.add('status-offline');
+                });
+            }
+        }
+
+        // --- Block Execution Logic (Converted to WebSockets) ---
+        const robot = {
+            async moveTimed(dir, secs) {
+                logTerminal(`> Executing Timed Maneuver: ${dir} (${secs}s)`, 'cmd');
+                sendWsCommand({ cmd: dir.toLowerCase() });
+                await sleep(secs * 1000);
+                sendWsCommand({ cmd: 'stop' });
+                logTerminal(`✓ Timed maneuver finished.`);
+            },
+            async move(dir) {
+                logTerminal(`> Signal Sent: Direct ${dir}`, 'cmd');
+                sendWsCommand({ cmd: dir.toLowerCase() });
+                await sleep(100);
+            },
+            async turn(dir, degrees) {
+                logTerminal(`> Adjusting Orientation: ${dir} ${degrees}°`, 'cmd');
+                sendWsCommand({ cmd: dir.toLowerCase() });
+                const turnTime = (degrees / 90) * 800; 
+                await sleep(turnTime); 
+                sendWsCommand({ cmd: 'stop' });
+            },
+            async setAngle(joint, angle) {
+                logTerminal(`> Actuator Adjustment: S${joint} -> ${angle}°`, 'cmd');
+                sendWsCommand({ cmd: 'servo', s: parseInt(joint), v: parseInt(angle) });
+                await sleep(300);
+            },
+            async setSpeed(v) {
+                logTerminal(`> Velocity Updated: ${v}`, 'cmd');
+                sendWsCommand({ cmd: 'speed', v: parseInt(v) });
+                await sleep(100);
+            },
+            async setRGB(r, g, b) {
+                logTerminal(`> Chromatic Sync: R:${r} G:${g} B:${b}`, 'cmd');
+                sendWsCommand({ cmd: 'rgb', r: parseInt(r), g: parseInt(g), b: parseInt(b) });
+                await sleep(100);
+            }
+        };
+
+        // ---- Home Position Reset ----
+        // Sends all servos to their default home positions from the robot firmware
+        function goHome() {
+            const homePositions = [
+                { s: 1, v: 75 },   // S1 — R.ELBOW
+                { s: 2, v: 90 },   // S2 — R.SHOULDER
+                { s: 3, v: 85 },   // S3 — NECK
+                { s: 4, v: 80 },   // S4 — L.SHOULDER
+                { s: 5, v: 110 }   // S5 — L.ELBOW
+            ];
+            homePositions.forEach(hp => {
+                sendWsCommand({ cmd: 'servo', s: hp.s, v: hp.v });
+            });
+            sendWsCommand({ cmd: 'stop' });
+            logTerminal('> HOME POSITION: All servos reset to default', 'cmd');
+        }
+
+        async function runSimulation() {
+            showTerminal();
+            let jsCode = Blockly.JavaScript.workspaceToCode(workspace);
+            if (!jsCode.trim()) {
+                logTerminal("SEQUENCER ERROR: LOGIC MATRIX EMPTY.", "error");
+                return;
+            }
+            if (!wsConnected) {
+                logTerminal("SYSTEM ERROR: WebSocket not connected. Check Uplink.", "error");
+                return;
+            }
+            try {
+                setRunButtonsState(true);
+                logTerminal("--- UPLINK SECURED: EXECUTING N.O.V.A. PROTOCOL ---", "info");
+                const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+                await new AsyncFunction('robot', 'sleep', jsCode)(robot, sleep);
+                logTerminal("--- N.O.V.A. SEQUENCE COMPLETED ---", "info");
+            } catch (e) {
+                logTerminal(`CRITICAL ERROR: ${e.message}`, "error");
+            } finally {
+                setRunButtonsState(false);
+            }
+        }
+
+        function setRunButtonsState(isRunning) {
+            const mobile = document.getElementById('runBtnMobile');
+            const desktop = document.getElementById('runBtnDesktop');
+            if(isRunning) {
+                mobile.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+                desktop.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Running...';
+            } else {
+                mobile.innerHTML = '<i class="fa-solid fa-play"></i>';
+                desktop.innerHTML = '<i class="fa-solid fa-play mr-2"></i>Play';
+            }
+            [mobile, desktop].forEach(b => b.classList.toggle('opacity-50', isRunning));
+        }
+
+        function showWorkspace() {
+            document.getElementById('terminalArea').style.display = 'none';
+            document.getElementById('blocklyArea').style.display = 'block';
+            document.getElementById('tabBlocks').classList.add('hud-btn-active');
+            document.getElementById('tabTerminal').classList.remove('hud-btn-active');
+            setTimeout(() => Blockly.svgResize(workspace), 50);
+        }
+        function showTerminal() {
+            document.getElementById('blocklyArea').style.display = 'none';
+            document.getElementById('terminalArea').style.display = 'flex';
+            document.getElementById('tabTerminal').classList.add('hud-btn-active');
+            document.getElementById('tabBlocks').classList.remove('hud-btn-active');
+        }
+        function clearWorkspace() { if (workspace) { workspace.clear(); showWorkspace(); } }
+        function clearConsole() { terminalOut.innerHTML = '<p class="text-[#08f7fe] italic opacity-80">Output log purged...</p>'; }
+    </script>
+</body>
+</html>

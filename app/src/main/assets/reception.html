@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <!-- Viewport optimized for mobile: disables zooming to maintain the "App" feel -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>NOVA SOOPER PREMIUM - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --jarvis-cyan: #00f2ff;
+            --jarvis-blue: #0066ff;
+            --jarvis-bg: #030a12;
+            --glow: 0 0 15px rgba(0, 242, 255, 0.5);
+        }
+
+        body {
+            background-color: var(--jarvis-bg);
+            color: var(--jarvis-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            overflow: hidden; /* Keep body fixed */
+            height: 100dvh; /* Dynamic viewport height prevents clipping by mobile address bars */
+            width: 100vw;
+            -webkit-tap-highlight-color: transparent; /* Removes blue tap highlight on mobile */
+        }
+
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        .fira-code { font-family: 'Fira Code', monospace; }
+
+        /* Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, #0a192f 0%, #030a12 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease-out;
+        }
+
+        .arc-reactor {
+            width: 120px; 
+            height: 120px;
+            border-radius: 50%;
+            border: 2px solid var(--jarvis-cyan);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--glow), inset var(--glow);
+            animation: pulse 2s infinite ease-in-out;
+        }
+        
+        @media (min-width: 768px) {
+            .arc-reactor { width: 150px; height: 150px; }
+        }
+
+        .arc-inner {
+            width: 80%;
+            height: 80%;
+            border: 6px dashed var(--jarvis-cyan);
+            border-radius: 50%;
+            animation: rotate 4s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        /* HUD Elements */
+        .glass-panel {
+            background: rgba(0, 242, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        /* Improved touch target handling for mobile */
+        .interactive-card, .interactive-btn {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        @media (hover: hover) {
+            .interactive-card:hover, .interactive-btn:hover {
+                background: rgba(0, 242, 255, 0.1);
+                border-color: var(--jarvis-cyan);
+                box-shadow: 0 0 15px rgba(0, 242, 255, 0.2), inset 0 0 15px rgba(0, 242, 255, 0.1);
+            }
+        }
+
+        .interactive-card:active, .interactive-btn:active {
+            transform: scale(0.96);
+            background: rgba(0, 242, 255, 0.15);
+        }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 242, 255, 0.1);
+            position: absolute;
+            left: 0;
+            animation: scan 4s linear infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            from { top: 0%; }
+            to { top: 100%; }
+        }
+
+        /* Grid Background */
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px; 
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        @media (min-width: 768px) {
+            .grid-bg { background-size: 40px 40px; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 242, 255, 0.02); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 242, 255, 0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:active { background: var(--jarvis-cyan); }
+
+        .text-shadow-glow {
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.8);
+        }
+        
+        .modal-content-area {
+            max-height: calc(100dvh - 80px);
+        }
+    </style>
+</head>
+
+<body class="flex flex-col relative w-full overflow-hidden">
+
+    <div class="grid-bg"></div>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="arc-reactor">
+            <div class="arc-inner"></div>
+            <div class="absolute font-bold orbitron text-sm md:text-lg">NOVA</div>
+        </div>
+        <div class="mt-8 text-center px-4 w-full max-w-sm mx-auto">
+            <h1 class="orbitron text-lg md:text-2xl tracking-widest text-white">NOVA SOOPER PREMIUM</h1>
+            <p class="text-[10px] md:text-xs tracking-[0.3em] uppercase opacity-60 mt-1">System Initializing...</p>
+            <div class="w-full h-1 bg-gray-900 mt-5 overflow-hidden relative mx-auto rounded-full">
+                <div id="load-progress" class="absolute left-0 top-0 h-full bg-cyan-400 w-0 transition-all duration-100 shadow-[0_0_10px_#00f2ff]"></div>
+            </div>
+            <div id="loading-logs" class="mt-4 h-16 overflow-hidden text-left w-full opacity-50 font-mono text-[9px] md:text-[10px]"></div>
+        </div>
+    </div>
+
+    <!-- MAIN INTERFACE -->
+    <main id="main-ui" class="hidden h-[100dvh] p-2 md:p-4 lg:p-6 flex-col opacity-0 transition-opacity duration-1000 max-w-[1600px] mx-auto w-full box-border relative">
+
+        <!-- Dynamic Dashboard Layout -->
+        <div class="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-4 relative w-full">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-5 h-full p-1 fade-in">
+
+                <!-- 1. AD SCREEN (Spans multiple rows/cols) -->
+                <div id="ad-screen" onclick="handleAdClick()" class="glass-panel col-span-1 md:col-span-2 xl:col-span-2 xl:row-span-2 flex flex-col p-3 md:p-5 relative overflow-hidden group min-h-[250px] sm:min-h-[300px] md:min-h-[400px]">
+                    <div class="scanline"></div>
+                    
+                    <!-- Screen Container - Adjusted Video for proper playback visibility -->
+                    <div class="flex-1 w-full bg-black/80 border border-cyan-500/30 rounded shadow-[inset_0_0_30px_rgba(0,242,255,0.2)] relative overflow-hidden flex items-center justify-center">
+                        
+                        <!-- BACK BUTTON IN VIDEO INTERFACE -->
+                        <button onclick="window.location.href='nova.html'" class="absolute top-2 left-2 md:top-4 md:left-4 z-[50] interactive-btn p-2 md:p-2.5 rounded-full border border-cyan-500/50 text-cyan-400 bg-black/60 backdrop-blur-md shadow-[0_0_15px_rgba(0,242,255,0.3)] transition-colors hover:text-white" title="Go Back">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+
+                        <!-- Playing Video (Changed to object-contain to prevent cropping) -->
+                        <video id="ad-video" class="absolute inset-0 w-full h-full object-contain opacity-90" autoplay muted playsinline>
+                            <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+                        </video>
+                        
+                        <!-- Light Cyan Tint over Video -->
+                        <div class="absolute inset-0 bg-cyan-900/20 mix-blend-overlay pointer-events-none"></div>
+                    </div>
+                </div>
+
+                <!-- 4 INTERACTIVE CARDS -->
+                <div onclick="openModal('view-social')" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group relative overflow-hidden min-h-[140px] md:min-h-[180px]">
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 md:w-14 md:h-14 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+                    </svg>
+                    <h4 class="orbitron text-sm md:text-lg font-bold text-white mb-1">SOCIAL MEDIA</h4>
+                    <p class="text-[9px] md:text-[11px] text-cyan-400/70 uppercase tracking-widest">Connect & Share</p>
+                </div>
+
+                <div onclick="openModal('view-routes')" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group relative overflow-hidden min-h-[140px] md:min-h-[180px]">
+                    <div class="absolute -left-6 -bottom-6 w-24 h-24 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 md:w-14 md:h-14 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                    </svg>
+                    <h4 class="orbitron text-sm md:text-lg font-bold text-white mb-1">FACILITY ROUTES</h4>
+                    <p class="text-[9px] md:text-[11px] text-cyan-400/70 uppercase tracking-widest">Building Schematics</p>
+                </div>
+
+                <div onclick="openModal('view-form')" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group relative overflow-hidden min-h-[140px] md:min-h-[180px]">
+                    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-green-500/10 rounded-full blur-xl group-hover:bg-green-500/20 transition-all"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 md:w-14 md:h-14 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    <h4 class="orbitron text-sm md:text-lg font-bold text-white mb-1">DATA ENTRY</h4>
+                    <p class="text-[9px] md:text-[11px] text-cyan-400/70 uppercase tracking-widest">Submit Intel</p>
+                </div>
+
+                <div onclick="openModal('view-about')" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group relative overflow-hidden min-h-[140px] md:min-h-[180px]">
+                    <div class="absolute -left-6 -top-6 w-24 h-24 bg-yellow-500/10 rounded-full blur-xl group-hover:bg-yellow-500/20 transition-all"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 md:w-14 md:h-14 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    <h4 class="orbitron text-sm md:text-lg font-bold text-white mb-1">ABOUT NEXUS</h4>
+                    <p class="text-[9px] md:text-[11px] text-cyan-400/70 uppercase tracking-widest">Company Lore</p>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Dynamic Modal System -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/90 hidden z-[9999] items-center justify-center backdrop-blur-md transition-opacity p-2 sm:p-4">
+        <div class="glass-panel w-full max-w-2xl border-cyan-500/50 relative flex flex-col shadow-2xl bg-[#030a12]/95 h-full max-h-[85dvh] sm:max-h-[90dvh] rounded-xl">
+            <div class="absolute inset-0 bg-cyan-500/5 animate-pulse pointer-events-none rounded-xl"></div>
+            
+            <button onclick="closeModal()" class="absolute top-2 right-2 md:top-4 md:right-4 text-cyan-500 hover:text-white transition-colors z-50 bg-black/80 border border-cyan-500/30 rounded-full p-2 interactive-btn shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+
+            <!-- Scrollable Content Area -->
+            <div class="p-4 sm:p-6 md:p-8 overflow-y-auto custom-scrollbar relative z-10 w-full h-full modal-content-area flex flex-col justify-start md:justify-center">
+                
+                <!-- View: Social Media -->
+                <div id="view-social" class="modal-view hidden text-center my-auto">
+                    <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl mb-6">GLOBAL NETWORK</h2>
+                    <div class="grid grid-cols-2 gap-3 sm:gap-4 max-w-sm mx-auto w-full">
+                        <div onclick="showQR('instagram')" class="glass-panel p-4 md:p-6 flex flex-col items-center justify-center interactive-card group hover:bg-pink-500/20 hover:border-pink-500 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 group-hover:text-pink-400 mb-2 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                            <span class="orbitron text-[10px] md:text-xs font-bold text-white mt-1">INSTAGRAM</span>
+                        </div>
+                        <div onclick="showQR('facebook')" class="glass-panel p-4 md:p-6 flex flex-col items-center justify-center interactive-card group hover:bg-blue-500/20 hover:border-blue-500 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 group-hover:text-blue-500 mb-2 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            <span class="orbitron text-[10px] md:text-xs font-bold text-white mt-1">FACEBOOK</span>
+                        </div>
+                        <div onclick="showQR('youtube')" class="glass-panel p-4 md:p-6 flex flex-col items-center justify-center interactive-card group hover:bg-red-500/20 hover:border-red-500 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 group-hover:text-red-500 mb-2 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            <span class="orbitron text-[10px] md:text-xs font-bold text-white mt-1">YOUTUBE</span>
+                        </div>
+                        <div onclick="showQR('linkedin')" class="glass-panel p-4 md:p-6 flex flex-col items-center justify-center interactive-card group hover:bg-blue-400/20 hover:border-blue-400 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 group-hover:text-blue-400 mb-2 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                            <span class="orbitron text-[10px] md:text-xs font-bold text-white mt-1">LINKEDIN</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View: Routes -->
+                <div id="view-routes" class="modal-view hidden my-auto w-full">
+                    <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl mb-2 border-b border-cyan-900 pb-2 mt-4 md:mt-0">FACILITY SCHEMATICS</h2>
+                    <p class="text-[9px] md:text-[10px] text-cyan-300/60 uppercase tracking-widest mb-4">Live Building Routing Matrix</p>
+                    
+                    <div class="w-full h-64 md:h-80 bg-black border border-cyan-500/50 rounded-lg relative overflow-hidden group shadow-[inset_0_0_20px_rgba(0,242,255,0.1)]">
+                        <!-- Changed to object-contain so maps aren't cropped -->
+                        <img id="route-img" src="https://images.unsplash.com/photo-1584982635957-c309503463a5?q=80&w=800&auto=format&fit=crop" alt="Facility Route Map" class="absolute inset-0 w-full h-full object-contain opacity-70 transition-all duration-500">
+                        
+                        <div class="absolute inset-0 bg-cyan-500/20 mix-blend-overlay pointer-events-none"></div>
+                        <div class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(rgba(0, 242, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 242, 255, 0.1) 1px, transparent 1px); background-size: 20px 20px;"></div>
+                    </div>
+                </div>
+
+                <!-- View: Form -->
+                <div id="view-form" class="modal-view hidden">
+                    <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl mb-2 border-b border-cyan-900 pb-2 pr-8 md:pr-0 mt-4 md:mt-0">SECURE INTAKE FORM</h2>
+                    <p class="text-[9px] md:text-[10px] text-cyan-300/60 uppercase tracking-widest mb-4 md:mb-6">Enter data for central processing</p>
+                    
+                    <form id="mission-form" class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4" onsubmit="submitForm(event)">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.1em] opacity-80 text-cyan-100">Full Name</label>
+                            <input type="text" id="form-name" required class="bg-black/80 border border-cyan-500/40 rounded px-3 py-2 md:py-2.5 text-cyan-300 text-sm focus:border-cyan-300 focus:bg-black outline-none fira-code transition-all w-full" placeholder="John Doe">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.1em] opacity-80 text-cyan-100">Phone Number</label>
+                            <input type="tel" id="form-phone" required class="bg-black/80 border border-cyan-500/40 rounded px-3 py-2 md:py-2.5 text-cyan-300 text-sm focus:border-cyan-300 focus:bg-black outline-none fira-code transition-all w-full" placeholder="+1 (555) 000-0000">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.1em] opacity-80 text-cyan-100">Email Address</label>
+                            <input type="email" id="form-email" required class="bg-black/80 border border-cyan-500/40 rounded px-3 py-2 md:py-2.5 text-cyan-300 text-sm focus:border-cyan-300 focus:bg-black outline-none fira-code transition-all w-full" placeholder="agent@nexus.tech">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.1em] opacity-80 text-cyan-100">Company Name <span class="opacity-50 text-[8px]">(Optional)</span></label>
+                            <input type="text" id="form-company" class="bg-black/80 border border-cyan-500/40 rounded px-3 py-2 md:py-2.5 text-cyan-300 text-sm focus:border-cyan-300 focus:bg-black outline-none fira-code transition-all w-full" placeholder="Corporate Corp.">
+                        </div>
+                        <div class="flex flex-col gap-1 sm:col-span-2">
+                            <label class="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.1em] opacity-80 text-cyan-100">Description / Payload</label>
+                            <textarea id="form-payload" required class="bg-black/80 border border-cyan-500/40 rounded px-3 py-2 text-cyan-300 text-sm focus:border-cyan-300 focus:bg-black outline-none fira-code resize-none h-20 md:h-24 custom-scrollbar transition-all w-full" placeholder="Enter transmission details..."></textarea>
+                        </div>
+                        <div class="sm:col-span-2 mt-2 md:mt-4">
+                            <button type="submit" class="interactive-btn bg-cyan-900/60 border border-cyan-400 text-cyan-100 px-4 py-3 md:py-3 w-full orbitron rounded font-bold tracking-widest hover:bg-cyan-500/30 hover:text-white transition-all text-sm md:text-base shadow-[0_0_10px_rgba(0,242,255,0.2)]">
+                                TRANSMIT DATA
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- View: About Us -->
+                <div id="view-about" class="modal-view hidden my-auto">
+                    <div class="text-center mb-6 mt-4 md:mt-0">
+                        <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-cyan-900/30 rounded-full border border-cyan-500/50 mb-3 md:mb-4 shadow-[0_0_20px_rgba(0,242,255,0.2)]">
+                            <h2 class="orbitron text-2xl md:text-3xl font-bold text-white">N<span class="text-cyan-500">X</span></h2>
+                        </div>
+                        <h2 id="about-header" class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-2xl leading-tight">NEXUS TECHNOLOGIES</h2>
+                        <p class="text-[9px] md:text-[10px] text-cyan-300/60 uppercase tracking-[0.2em] mt-1">Forging the Digital Frontier</p>
+                    </div>
+                    
+                    <div class="space-y-3 md:space-y-4 text-white/80 text-xs md:text-sm leading-relaxed fira-code bg-black/60 p-4 md:p-5 rounded border border-cyan-900/60">
+                        <div id="about-desc">
+                            <!-- Dynamic Content Injected Here -->
+                        </div>
+                        <p class="text-center mt-3 md:mt-4 border-t border-cyan-900/50 pt-3 md:pt-4 text-[10px] md:text-xs text-cyan-500">
+                            SYSTEM: NOVA PROTOCOL
+                        </p>
+                    </div>
+                </div>
+
+                <!-- View: Success (Shown after Form Submit) -->
+                <div id="view-success" class="modal-view hidden text-center py-10 my-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 md:w-16 md:h-16 text-cyan-400 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-2xl mb-2">TRANSMISSION SECURED</h2>
+                    <p class="text-white/80 mb-8 text-xs md:text-sm fira-code px-4">Your data packet has been encrypted and successfully routed to the core network.</p>
+                    <button onclick="closeModal()" class="interactive-btn px-6 py-3 border border-cyan-500 bg-cyan-900/40 text-cyan-100 orbitron text-[10px] md:text-xs font-bold tracking-widest hover:bg-cyan-500/40 transition-colors rounded">CLOSE TERMINAL</button>
+                </div>
+
+                <!-- NEW: View Admin Login -->
+                <div id="view-admin-login" class="modal-view hidden text-center py-10 my-auto">
+                    <h2 class="orbitron text-red-500 font-bold tracking-widest text-lg md:text-2xl mb-2">SYSTEM OVERRIDE</h2>
+                    <p class="text-white/60 mb-6 text-xs fira-code">Enter Administrator Authorization Code</p>
+                    <form onsubmit="verifyAdmin(event)" class="max-w-xs mx-auto flex flex-col gap-4">
+                        <input type="password" id="admin-password" class="bg-black/80 border border-red-500/50 rounded px-4 py-3 text-center text-red-400 text-lg focus:border-red-500 outline-none fira-code tracking-[0.5em]" placeholder="****" autocomplete="off">
+                        <button type="submit" class="interactive-btn bg-red-900/40 border border-red-500 text-red-300 px-6 py-3 orbitron rounded font-bold tracking-widest hover:bg-red-500/30 transition-all">AUTHORIZE</button>
+                    </form>
+                    <p id="admin-error" class="text-red-500 mt-4 text-xs fira-code hidden">ACCESS DENIED. INVALID CODE.</p>
+                </div>
+
+                <!-- NEW: View Admin Panel Menu -->
+                <div id="view-admin-panel" class="modal-view hidden my-auto w-full">
+                    <div class="text-center mb-6 border-b border-cyan-900 pb-4">
+                        <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl">ADMINISTRATOR CONSOLE</h2>
+                        <p class="text-[10px] text-cyan-300/60 uppercase tracking-widest mt-1">Select Module to Configure</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 max-w-2xl mx-auto">
+                        <!-- Module: Slideshow -->
+                        <div onclick="openModal('view-admin-video')" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group hover:bg-cyan-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                            </svg>
+                            <h4 class="orbitron text-[10px] md:text-xs font-bold text-white mb-1">AD SLIDESHOW</h4>
+                        </div>
+
+                        <!-- Module: Map -->
+                        <div onclick="openModal('view-admin-map')" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group hover:bg-cyan-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
+                            </svg>
+                            <h4 class="orbitron text-[10px] md:text-xs font-bold text-white mb-1">ROUTE MAP</h4>
+                        </div>
+
+                        <!-- Module: Social -->
+                        <div onclick="openModal('view-admin-social')" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group hover:bg-cyan-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                            </svg>
+                            <h4 class="orbitron text-[10px] md:text-xs font-bold text-white mb-1">SOCIAL LINKS</h4>
+                        </div>
+
+                        <!-- Module: About -->
+                        <div onclick="openModal('view-admin-about')" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group hover:bg-cyan-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                            </svg>
+                            <h4 class="orbitron text-[10px] md:text-xs font-bold text-white mb-1">ABOUT US</h4>
+                        </div>
+
+                        <!-- Module: Form Data -->
+                        <div onclick="openModal('view-admin-forms'); updateAdminFormCount();" class="glass-panel p-5 md:p-6 flex flex-col items-center justify-center text-center interactive-card group hover:bg-cyan-900/30 col-span-2 md:col-span-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 md:w-10 md:h-10 text-cyan-500 mb-3 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                            <h4 class="orbitron text-[10px] md:text-xs font-bold text-white mb-1">FORM DATA</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Sub-View: Video Configuration -->
+                <div id="view-admin-video" class="modal-view hidden my-auto w-full">
+                    <div class="flex items-center gap-3 mb-6 border-b border-cyan-900 pb-3">
+                        <button onclick="openModal('view-admin-panel')" class="interactive-btn p-1.5 rounded border border-cyan-500/50 text-cyan-400 bg-cyan-900/20 hover:bg-cyan-500/20" title="Back to Menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <div>
+                            <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl">AD SLIDESHOW</h2>
+                            <p class="text-[9px] text-cyan-300/60 uppercase tracking-widest">Manage Video Broadcasts</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 p-4 border border-cyan-900/50 rounded">
+                        <div class="flex flex-col md:flex-row gap-3 mb-4 items-end">
+                            <div class="flex-1">
+                                <label class="text-[10px] text-white/60 block mb-1">Add Video to Slideshow</label>
+                                <input type="file" id="cfg-video" accept="video/*" class="w-full text-xs text-cyan-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:bg-cyan-900/50 file:text-cyan-300 hover:file:bg-cyan-800/50 cursor-pointer">
+                            </div>
+                            <button onclick="adminUploadVideo()" class="px-4 py-2 bg-cyan-600/50 border border-cyan-500 text-white tracking-widest text-[10px] md:text-xs rounded hover:bg-cyan-500 w-full md:w-auto mt-2 md:mt-0 transition-colors shadow-[0_0_10px_rgba(0,242,255,0.2)]">UPLOAD & ADD</button>
+                        </div>
+
+                        <ul id="admin-video-list" class="space-y-2 mt-2 max-h-48 overflow-y-auto custom-scrollbar">
+                            <!-- Dynamic List Inserted Here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Admin Sub-View: Route Map Configuration -->
+                <div id="view-admin-map" class="modal-view hidden my-auto w-full">
+                    <div class="flex items-center gap-3 mb-6 border-b border-cyan-900 pb-3">
+                        <button onclick="openModal('view-admin-panel')" class="interactive-btn p-1.5 rounded border border-cyan-500/50 text-cyan-400 bg-cyan-900/20 hover:bg-cyan-500/20" title="Back to Menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <div>
+                            <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl">ROUTE MAP</h2>
+                            <p class="text-[9px] text-cyan-300/60 uppercase tracking-widest">Update Facility Schematics</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 p-4 border border-cyan-900/50 rounded">
+                        <div class="flex flex-col md:flex-row gap-3 items-end">
+                            <div class="flex-1">
+                                <label class="text-[10px] text-white/60 block mb-1">Select New Map Image</label>
+                                <input type="file" id="cfg-route" accept="image/*" class="w-full text-xs text-cyan-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:bg-cyan-900/50 file:text-cyan-300 hover:file:bg-cyan-800/50 cursor-pointer">
+                            </div>
+                            <button onclick="adminSaveRoute()" id="btn-save-route" class="px-4 py-2 bg-cyan-600/50 border border-cyan-500 text-white tracking-widest text-[10px] md:text-xs rounded hover:bg-cyan-500 w-full md:w-auto mt-2 md:mt-0 transition-colors shadow-[0_0_10px_rgba(0,242,255,0.2)]">UPDATE MAP</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Sub-View: Social Links Configuration -->
+                <div id="view-admin-social" class="modal-view hidden my-auto w-full">
+                    <div class="flex items-center gap-3 mb-6 border-b border-cyan-900 pb-3">
+                        <button onclick="openModal('view-admin-panel')" class="interactive-btn p-1.5 rounded border border-cyan-500/50 text-cyan-400 bg-cyan-900/20 hover:bg-cyan-500/20" title="Back to Menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <div>
+                            <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl">SOCIAL TARGETS</h2>
+                            <p class="text-[9px] text-cyan-300/60 uppercase tracking-widest">Configure QR Destinations</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 p-4 border border-cyan-900/50 rounded">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                            <div>
+                                <label class="text-[10px] text-white/60 block mb-1">Instagram URL</label>
+                                <input type="url" id="cfg-social-instagram" class="w-full bg-black/60 border border-cyan-500/30 rounded px-3 py-2 text-cyan-300 text-xs outline-none fira-code">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-white/60 block mb-1">Facebook URL</label>
+                                <input type="url" id="cfg-social-facebook" class="w-full bg-black/60 border border-cyan-500/30 rounded px-3 py-2 text-cyan-300 text-xs outline-none fira-code">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-white/60 block mb-1">YouTube URL</label>
+                                <input type="url" id="cfg-social-youtube" class="w-full bg-black/60 border border-cyan-500/30 rounded px-3 py-2 text-cyan-300 text-xs outline-none fira-code">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-white/60 block mb-1">LinkedIn URL</label>
+                                <input type="url" id="cfg-social-linkedin" class="w-full bg-black/60 border border-cyan-500/30 rounded px-3 py-2 text-cyan-300 text-xs outline-none fira-code">
+                            </div>
+                        </div>
+                        <button onclick="adminSaveSocial()" id="btn-save-social" class="px-4 py-3 bg-cyan-600/50 border border-cyan-500 text-white tracking-widest text-[10px] md:text-xs rounded hover:bg-cyan-500 w-full transition-colors shadow-[0_0_10px_rgba(0,242,255,0.2)]">SAVE SOCIAL LINKS</button>
+                    </div>
+                </div>
+
+                <!-- Admin Sub-View: About Us Configuration -->
+                <div id="view-admin-about" class="modal-view hidden my-auto w-full">
+                    <div class="flex items-center gap-3 mb-6 border-b border-cyan-900 pb-3">
+                        <button onclick="openModal('view-admin-panel')" class="interactive-btn p-1.5 rounded border border-cyan-500/50 text-cyan-400 bg-cyan-900/20 hover:bg-cyan-500/20" title="Back to Menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <div>
+                            <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl">ABOUT US</h2>
+                            <p class="text-[9px] text-cyan-300/60 uppercase tracking-widest">Update Corporate Lore</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 p-4 border border-cyan-900/50 rounded">
+                        <div class="space-y-4 mb-5">
+                            <div>
+                                <label class="text-[10px] text-white/60 block mb-1">Company Header</label>
+                                <input type="text" id="cfg-about-header" class="w-full bg-black/60 border border-cyan-500/30 rounded px-3 py-2 text-cyan-300 text-xs outline-none fira-code">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-white/60 block mb-1 flex flex-col sm:flex-row sm:justify-between">
+                                    <span>Company Description (Plain Text)</span>
+                                    <span class="text-cyan-500 font-bold">Pro Tip: Wrap text in *asterisks* to make it glow cyan!</span>
+                                </label>
+                                <textarea id="cfg-about-desc" class="w-full bg-black/60 border border-cyan-500/30 rounded px-3 py-2 text-cyan-300 text-xs outline-none fira-code h-32 custom-scrollbar" placeholder="Established in 2042, *NEXUS TECH* has been at the bleeding edge...&#10;&#10;Our mission is simple..."></textarea>
+                            </div>
+                        </div>
+                        <button onclick="adminSaveAbout()" id="btn-save-about" class="px-4 py-3 bg-cyan-600/50 border border-cyan-500 text-white tracking-widest text-[10px] md:text-xs rounded hover:bg-cyan-500 w-full transition-colors shadow-[0_0_10px_rgba(0,242,255,0.2)]">SAVE ABOUT CONTENT</button>
+                    </div>
+                </div>
+
+                <!-- Admin Sub-View: Form Data Management -->
+                <div id="view-admin-forms" class="modal-view hidden my-auto w-full">
+                    <div class="flex items-center gap-3 mb-6 border-b border-cyan-900 pb-3">
+                        <button onclick="openModal('view-admin-panel')" class="interactive-btn p-1.5 rounded border border-cyan-500/50 text-cyan-400 bg-cyan-900/20 hover:bg-cyan-500/20" title="Back to Menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <div>
+                            <h2 class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl">FORM DATA</h2>
+                            <p class="text-[9px] text-cyan-300/60 uppercase tracking-widest">Download Secure Intake Logs</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 p-6 border border-cyan-900/50 rounded text-center">
+                        <div class="text-5xl font-bold text-cyan-400 mb-2 fira-code" id="admin-form-count">0</div>
+                        <p class="text-white/60 text-xs mb-6 fira-code uppercase tracking-widest">Records Collected</p>
+                        
+                        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                            <button onclick="downloadCSV()" class="px-6 py-3 bg-cyan-600 border border-cyan-500 text-white tracking-widest text-[10px] md:text-xs rounded hover:bg-cyan-500 transition-colors shadow-[0_0_15px_rgba(0,242,255,0.3)] w-full sm:w-auto font-bold flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                EXPORT CSV (EXCEL)
+                            </button>
+                            <button onclick="clearFormData()" class="px-6 py-3 bg-red-900/40 border border-red-500 text-red-300 tracking-widest text-[10px] md:text-xs rounded hover:bg-red-500/30 transition-colors w-full sm:w-auto font-bold flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                CLEAR DATABASE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: View QR Code -->
+                <div id="view-qr" class="modal-view hidden text-center py-8 my-auto">
+                    <h2 id="qr-title" class="orbitron text-cyan-400 font-bold tracking-widest text-lg md:text-xl mb-6 uppercase">SCAN TO CONNECT</h2>
+                    <div class="bg-white p-4 rounded-xl inline-block mx-auto border-4 border-cyan-500 shadow-[0_0_30px_rgba(0,242,255,0.3)]">
+                        <div id="qrcode-container" class="w-48 h-48 md:w-56 md:h-56 flex items-center justify-center">
+                            <!-- QR Code renders here -->
+                        </div>
+                    </div>
+                    <p id="qr-error" class="text-red-400 mt-6 text-xs fira-code hidden">URL not configured by Administrator.</p>
+                    <p class="text-white/60 mt-6 text-[10px] fira-code uppercase tracking-widest">Use personal device to scan</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default Configuration
+        let appConfig = {
+            socialUrls: { instagram: "", facebook: "", youtube: "", linkedin: "" },
+            aboutHeader: "NEXUS TECHNOLOGIES",
+            aboutDesc: "Established in 2042, *NEXUS TECH* has been at the bleeding edge of quantum logistics, neural network interfacing, and orbital communication arrays.\n\nOur mission is simple: To connect the disconnected, bridge the gap between biological and synthetic intelligence, and secure a prosperous future for all registered citizens of the core system.",
+            videoList: [], // Array of { id, name }
+            submissions: [] // Array to hold form data
+        };
+
+        // State for in-memory blobs for Slideshow
+        let customVideoBlobs = []; // Array of { id, blob }
+        let currentVideoIndex = -1;
+        const videoPlayer = document.getElementById('ad-video');
+
+        // Startup Simulator
+        const startupSteps = [
+            "Initializing UI Engine...",
+            "Establishing Secure Node Connections...",
+            "Loading Neural Route Maps...",
+            "Fetching Commercial Broadcast Assets...",
+            "Nova Dashboard Ready."
+        ];
+
+        window.onload = async () => {
+            const loadProgress = document.getElementById('load-progress');
+            const loadingLogs = document.getElementById('loading-logs');
+
+            await loadConfiguration(); // Load all data before showing UI
+
+            for (let i = 0; i < startupSteps.length; i++) {
+                const log = document.createElement('div');
+                log.innerText = `[SYS] ${startupSteps[i]}`;
+                loadingLogs.prepend(log);
+                loadProgress.style.width = `${((i + 1) / startupSteps.length) * 100}%`;
+                await new Promise(r => setTimeout(r, 450));
+            }
+
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loading-screen');
+                const mainUI = document.getElementById('main-ui');
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    mainUI.classList.remove('hidden');
+                    mainUI.classList.add('flex');
+                    setTimeout(() => mainUI.style.opacity = '1', 50);
+                }, 1000);
+            }, 600);
+
+            // Hook up video ended listener for Slideshow functionality
+            videoPlayer.addEventListener('ended', playNextVideo);
+        };
+
+        // Secret Admin Login Logic (6 clicks)
+        let clickCount = 0;
+        let clickTimer = null;
+        function handleAdClick() {
+            clickCount++;
+            clearTimeout(clickTimer);
+            if (clickCount >= 6) {
+                clickCount = 0;
+                document.getElementById('admin-password').value = '';
+                document.getElementById('admin-error').classList.add('hidden');
+                openModal('view-admin-login');
+            } else {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 800); 
+            }
+        }
+
+        // Verify Admin Password
+        function verifyAdmin(event) {
+            event.preventDefault();
+            const pass = document.getElementById('admin-password').value;
+            if (pass === "1122") {
+                populateAdminForm();
+                openModal('view-admin-panel');
+            } else {
+                document.getElementById('admin-error').classList.remove('hidden');
+            }
+        }
+
+        /* ----------------------------------------------------
+           DATA LOADING & UI RENDERING
+        ---------------------------------------------------- */
+        async function loadConfiguration() {
+            // Load text config
+            const savedConfig = localStorage.getItem('novaAppConfig');
+            if (savedConfig) {
+                appConfig = JSON.parse(savedConfig);
+                // Ensure submissions array exists for older saved configs
+                if (!appConfig.submissions) appConfig.submissions = [];
+                renderAboutUsUI();
+            } else {
+                renderAboutUsUI(); // Render defaults
+            }
+
+            // Load Route Image
+            try {
+                const routeBlob = await localforage.getItem('novaRouteBlob');
+                if (routeBlob) applyBlobToMedia('route-img', routeBlob);
+            } catch (err) {}
+
+            // Load Slideshow Videos
+            try {
+                for (let vid of appConfig.videoList) {
+                    const blob = await localforage.getItem(vid.id);
+                    if (blob) customVideoBlobs.push({ id: vid.id, blob: blob });
+                }
+                playNextVideo(); // Start the slideshow!
+            } catch (err) {}
+        }
+
+        // Format and render "About Us" into User Friendly output
+        function renderAboutUsUI() {
+            document.getElementById('about-header').innerText = appConfig.aboutHeader;
+            
+            // 1. Split by new lines to create paragraphs
+            const paragraphs = appConfig.aboutDesc.split(/\n+/).filter(p => p.trim() !== '');
+            
+            // 2. Wrap text surrounded by *asterisks* in cyan styling
+            let finalHtml = paragraphs.map(p => {
+                let formattedText = p.replace(/\*(.*?)\*/g, "<span class='text-cyan-400 font-bold'>$1</span>");
+                return `<p class="mb-3">${formattedText}</p>`;
+            }).join('');
+            
+            document.getElementById('about-desc').innerHTML = finalHtml;
+        }
+
+        function populateAdminForm() {
+            document.getElementById('cfg-social-instagram').value = appConfig.socialUrls.instagram || "";
+            document.getElementById('cfg-social-facebook').value = appConfig.socialUrls.facebook || "";
+            document.getElementById('cfg-social-youtube').value = appConfig.socialUrls.youtube || "";
+            document.getElementById('cfg-social-linkedin').value = appConfig.socialUrls.linkedin || "";
+            document.getElementById('cfg-about-header').value = appConfig.aboutHeader;
+            document.getElementById('cfg-about-desc').value = appConfig.aboutDesc;
+            document.getElementById('cfg-video').value = "";
+            document.getElementById('cfg-route').value = "";
+            renderAdminVideoList();
+        }
+
+        // Display videos in the admin panel
+        function renderAdminVideoList() {
+            const list = document.getElementById('admin-video-list');
+            list.innerHTML = "";
+            if(appConfig.videoList.length === 0) {
+                list.innerHTML = "<li class='text-white/40 text-[10px] italic py-2'>No custom videos. Playing default broadcast.</li>";
+                return;
+            }
+
+            appConfig.videoList.forEach((vid, index) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-black/60 border border-cyan-900/50 p-2 rounded";
+                li.innerHTML = `
+                    <span class="text-cyan-300 text-[10px] truncate pr-2 fira-code">${vid.name}</span>
+                    <button type="button" onclick="adminDeleteVideo(${index})" class="text-red-400 hover:text-red-300 text-[10px] border border-red-900 bg-red-900/20 px-2 py-1 rounded shrink-0 transition-colors">DELETE</button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function applyBlobToMedia(elementId, blob) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.src = URL.createObjectURL(blob);
+        }
+
+        /* ----------------------------------------------------
+           VIDEO SLIDESHOW LOGIC
+        ---------------------------------------------------- */
+        function playNextVideo() {
+            if (customVideoBlobs.length === 0) {
+                // Play Default
+                if(videoPlayer.src !== "https://www.w3schools.com/html/mov_bbb.mp4") {
+                    videoPlayer.src = "https://www.w3schools.com/html/mov_bbb.mp4";
+                }
+                videoPlayer.play().catch(e => {});
+                return;
+            }
+            
+            currentVideoIndex++;
+            if(currentVideoIndex >= customVideoBlobs.length) {
+                currentVideoIndex = 0; // Loop back to start
+            }
+            
+            videoPlayer.src = URL.createObjectURL(customVideoBlobs[currentVideoIndex].blob);
+            videoPlayer.play().catch(e => console.log("Slideshow blocked:", e));
+        }
+
+        /* ----------------------------------------------------
+           ADMIN SAVE ACTIONS (SEPARATED)
+        ---------------------------------------------------- */
+        
+        // 1. Upload Video to Slideshow
+        async function adminUploadVideo() {
+            const fileInput = document.getElementById('cfg-video');
+            const file = fileInput.files[0];
+            if (!file) return alert("Please select a video file first.");
+
+            const id = 'vid_' + Date.now();
+            
+            // Save to IndexedDB
+            await localforage.setItem(id, file);
+            
+            // Update app arrays
+            appConfig.videoList.push({ id: id, name: file.name });
+            customVideoBlobs.push({ id: id, blob: file });
+            
+            // Persist config list
+            localStorage.setItem('novaAppConfig', JSON.stringify(appConfig));
+            
+            fileInput.value = ""; // Reset input
+            renderAdminVideoList();
+
+            // If it's the first video, instantly start playing it
+            if(customVideoBlobs.length === 1) {
+                currentVideoIndex = -1;
+                playNextVideo();
+            }
+        }
+
+        // 2. Delete Video from Slideshow
+        async function adminDeleteVideo(index) {
+            const vidToRemove = appConfig.videoList[index];
+            
+            // Remove from IndexedDB
+            await localforage.removeItem(vidToRemove.id);
+            
+            // Remove from arrays
+            appConfig.videoList.splice(index, 1);
+            customVideoBlobs.splice(index, 1);
+            
+            // Save & Re-render
+            localStorage.setItem('novaAppConfig', JSON.stringify(appConfig));
+            renderAdminVideoList();
+
+            // Handle active playing video deletion
+            if(customVideoBlobs.length === 0) {
+                playNextVideo(); // Revert to default
+            } else if (index === currentVideoIndex) {
+                currentVideoIndex--; // Offset because array shrank
+                playNextVideo();
+            }
+        }
+
+        // 3. Update Route Map
+        async function adminSaveRoute() {
+            const btn = document.getElementById('btn-save-route');
+            const file = document.getElementById('cfg-route').files[0];
+            if (!file) return;
+
+            btn.innerText = "SAVING...";
+            await localforage.setItem('novaRouteBlob', file);
+            applyBlobToMedia('route-img', file);
+            
+            setTimeout(() => { btn.innerText = "UPDATE MAP"; }, 1000);
+        }
+
+        // 4. Save Social Links
+        function adminSaveSocial() {
+            const btn = document.getElementById('btn-save-social');
+            btn.innerText = "SAVING...";
+
+            appConfig.socialUrls.instagram = document.getElementById('cfg-social-instagram').value;
+            appConfig.socialUrls.facebook = document.getElementById('cfg-social-facebook').value;
+            appConfig.socialUrls.youtube = document.getElementById('cfg-social-youtube').value;
+            appConfig.socialUrls.linkedin = document.getElementById('cfg-social-linkedin').value;
+            
+            localStorage.setItem('novaAppConfig', JSON.stringify(appConfig));
+            setTimeout(() => { btn.innerText = "SAVE SOCIAL LINKS"; }, 1000);
+        }
+
+        // 5. Save About Content
+        function adminSaveAbout() {
+            const btn = document.getElementById('btn-save-about');
+            btn.innerText = "SAVING...";
+
+            appConfig.aboutHeader = document.getElementById('cfg-about-header').value || "NEXUS TECHNOLOGIES";
+            appConfig.aboutDesc = document.getElementById('cfg-about-desc').value;
+            
+            localStorage.setItem('novaAppConfig', JSON.stringify(appConfig));
+            renderAboutUsUI(); // Update UI
+            
+            setTimeout(() => { btn.innerText = "SAVE ABOUT CONTENT"; }, 1000);
+        }
+
+        // 6. Form Data Management Functions
+        function updateAdminFormCount() {
+            const count = appConfig.submissions ? appConfig.submissions.length : 0;
+            document.getElementById('admin-form-count').innerText = count;
+        }
+
+        function downloadCSV() {
+            const data = appConfig.submissions;
+            if (!data || data.length === 0) {
+                alert("No submissions available to download.");
+                return;
+            }
+
+            const headers = ["Timestamp", "Name", "Phone", "Email", "Company", "Description"];
+            const csvRows = [headers.join(",")];
+
+            data.forEach(row => {
+                const values = [
+                    row.timestamp,
+                    `"${row.name.replace(/"/g, '""')}"`,
+                    `"${row.phone.replace(/"/g, '""')}"`,
+                    `"${row.email.replace(/"/g, '""')}"`,
+                    `"${row.company.replace(/"/g, '""')}"`,
+                    `"${row.payload.replace(/"/g, '""')}"`
+                ];
+                csvRows.push(values.join(","));
+            });
+
+            const csvString = csvRows.join("\n");
+            const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "nova_intake_forms.csv");
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function clearFormData() {
+            if (confirm("WARNING: This will permanently delete all collected form data. Proceed?")) {
+                appConfig.submissions = [];
+                localStorage.setItem('novaAppConfig', JSON.stringify(appConfig));
+                updateAdminFormCount();
+            }
+        }
+
+        /* ----------------------------------------------------
+           MODAL & QR UTILITIES
+        ---------------------------------------------------- */
+        function openModal(viewId) {
+            const views = document.querySelectorAll('.modal-view');
+            views.forEach(view => view.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        function submitForm(event) {
+            event.preventDefault();
+
+            // Extract data and save to config
+            const newEntry = {
+                timestamp: new Date().toISOString(),
+                name: document.getElementById('form-name').value,
+                phone: document.getElementById('form-phone').value,
+                email: document.getElementById('form-email').value,
+                company: document.getElementById('form-company').value,
+                payload: document.getElementById('form-payload').value
+            };
+
+            appConfig.submissions.push(newEntry);
+            localStorage.setItem('novaAppConfig', JSON.stringify(appConfig));
+
+            openModal('view-success');
+            document.getElementById('mission-form').reset();
+        }
+
+        function showQR(platform) {
+            const url = appConfig.socialUrls[platform];
+            document.getElementById('qr-title').innerText = platform;
+            const container = document.getElementById('qrcode-container');
+            const errorMsg = document.getElementById('qr-error');
+            
+            container.innerHTML = "";
+            
+            if (!url || url.trim() === "") {
+                errorMsg.classList.remove('hidden');
+                container.classList.add('hidden');
+            } else {
+                errorMsg.classList.add('hidden');
+                container.classList.remove('hidden');
+                
+                const size = window.innerWidth < 768 ? 192 : 224; 
+                new QRCode(container, {
+                    text: url, width: size, height: size,
+                    colorDark : "#000000", colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }
+            openModal('view-qr');
+        }
+    </script>
+</body>
+</html>

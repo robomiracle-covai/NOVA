@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NOVA COMMAND - ROBOT STUDIO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --jarvis-cyan: #00f2ff;
+            --jarvis-bg: #030a12;
+            --glow: 0 0 15px rgba(0, 242, 255, 0.5);
+        }
+
+        body {
+            background-color: var(--jarvis-bg);
+            color: var(--jarvis-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, #0a192f 0%, #030a12 100%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease-out;
+        }
+
+        .arc-reactor {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 2px solid var(--jarvis-cyan);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--glow), inset var(--glow);
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        .arc-inner {
+            width: 100px;
+            height: 100px;
+            border: 6px dashed var(--jarvis-cyan);
+            border-radius: 50%;
+            animation: rotate 4s linear infinite;
+        }
+
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        .glass-panel {
+            background: rgba(0, 242, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 242, 255, 0.15);
+            border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .interactive-card:hover {
+            background: rgba(0, 242, 255, 0.1);
+            border-color: var(--jarvis-cyan);
+            box-shadow: 0 0 25px rgba(0, 242, 255, 0.2), inset 0 0 15px rgba(0, 242, 255, 0.1);
+            cursor: pointer;
+            transform: translateY(-5px);
+        }
+        
+        /* Purple Theme for Teach Mode */
+        .interactive-card.theme-purple:hover {
+            background: rgba(168, 85, 247, 0.1);
+            border-color: #a855f7;
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.2), inset 0 0 15px rgba(168, 85, 247, 0.1);
+        }
+
+        .interactive-card:active { transform: scale(0.98); }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            body { font-size: 14px; overflow-y: auto; }
+            #main-ui { height: auto; min-height: 100vh; overflow-y: auto; }
+        }
+    </style>
+</head>
+
+<body class="flex flex-col">
+
+    <div class="grid-bg"></div>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="arc-reactor">
+            <div class="arc-inner"></div>
+            <div class="absolute font-bold orbitron text-lg">NOVA</div>
+        </div>
+        <div class="mt-8 text-center px-4">
+            <h1 class="orbitron text-xl md:text-2xl tracking-widest text-white uppercase">Robot Studio</h1>
+            <p class="text-xs tracking-[0.3em] uppercase opacity-60 mt-2">Loading Operation Modes...</p>
+            <div class="w-48 md:w-64 h-1 bg-gray-900 mt-4 overflow-hidden relative mx-auto">
+                <div id="load-progress" class="absolute left-0 top-0 h-full bg-cyan-400 w-0 transition-all duration-100"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN INTERFACE -->
+    <main id="main-ui" class="hidden h-screen p-4 md:p-8 flex-col opacity-0 transition-opacity duration-1000 max-w-[1200px] mx-auto w-full box-border">
+
+        <!-- Global Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center border-b border-cyan-900 pb-4 mb-8 shrink-0 gap-4">
+            <div class="text-center md:text-left select-none">
+                <h2 class="orbitron text-2xl md:text-3xl font-bold tracking-tighter">ROBOT <span class="text-white">STUDIO</span></h2>
+                <p class="text-[10px] tracking-[0.4em] uppercase opacity-50">Operation Mode Selection</p>
+            </div>
+            
+            <button onclick="window.location.href='robot.html'" class="flex items-center gap-2 text-cyan-500 hover:text-white transition-colors text-xs tracking-widest uppercase orbitron opacity-60 hover:opacity-100 border border-cyan-900 hover:border-cyan-400 px-4 py-2 rounded">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Return to Hub
+            </button>
+        </header>
+
+        <!-- Mode Selection Grid -->
+        <div class="flex-1 flex flex-col items-center justify-center p-2">
+            <div class="flex flex-col md:flex-row gap-8 w-full justify-center items-stretch">
+                
+                <!-- Manual Control Card -->
+                <div onclick="window.location.href='control.html'" class="glass-panel interactive-card flex-1 flex flex-col items-center justify-center text-center p-8 md:p-16 group relative overflow-hidden">
+                    <div class="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    
+                    <div class="mb-6 p-6 rounded-full border border-cyan-500/20 group-hover:border-cyan-400/50 transition-all">
+                        <!-- Controller Icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 md:w-24 md:h-24 text-cyan-500/50 group-hover:text-cyan-400 transition-colors duration-300 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="6" width="20" height="12" rx="4" ry="4"></rect>
+                            <circle cx="17" cy="12" r="1.5"></circle>
+                            <circle cx="13" cy="12" r="1.5"></circle>
+                            <line x1="7" y1="12" x2="10" y2="12"></line>
+                            <line x1="8.5" y1="10.5" x2="8.5" y2="13.5"></line>
+                        </svg>
+                    </div>
+
+                    <h2 class="orbitron text-2xl md:text-3xl font-bold tracking-wider text-white mb-3 relative z-10">MANUAL CONTROL</h2>
+                    <div class="h-1 w-16 bg-cyan-500/50 mb-4 group-hover:w-32 group-hover:bg-cyan-400 transition-all duration-500 relative z-10"></div>
+                    <p class="text-xs md:text-sm tracking-widest uppercase opacity-60 relative z-10 max-w-[200px]">Direct Teleoperation & Active Telemetry Override</p>
+                </div>
+
+                <!-- Teach & Train Card -->
+                <div onclick="window.location.href='teach.html'" class="glass-panel interactive-card theme-purple flex-1 flex flex-col items-center justify-center text-center p-8 md:p-16 group relative overflow-hidden">
+                    <div class="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    
+                    <div class="mb-6 p-6 rounded-full border border-purple-500/20 group-hover:border-purple-400/50 transition-all">
+                        <!-- Path/Node Icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 md:w-24 md:h-24 text-purple-500/50 group-hover:text-purple-400 transition-colors duration-300 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="5" r="3"></circle>
+                            <circle cx="6" cy="19" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <path d="M10.5 7.5l-3 9"></path>
+                            <path d="M13.5 7.5l3 9"></path>
+                            <path d="M8.5 19h7"></path>
+                            <path d="M12 8v5" stroke-dasharray="2 2"></path>
+                        </svg>
+                    </div>
+
+                    <h2 class="orbitron text-2xl md:text-3xl font-bold tracking-wider text-white mb-3 relative z-10">TEACH & TRAIN</h2>
+                    <div class="h-1 w-16 bg-purple-500/50 mb-4 group-hover:w-32 group-hover:bg-purple-400 transition-all duration-500 relative z-10"></div>
+                    <p class="text-xs md:text-sm tracking-widest uppercase opacity-60 relative z-10 max-w-[200px]">Kinesthetic Learning & Path Node Recording</p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Global Footer -->
+        <footer class="mt-8 flex justify-between items-center text-[10px] opacity-40 uppercase tracking-[0.3em] shrink-0 border-t border-cyan-900/50 pt-4">
+            <div>Nova OS v4.0.2 Premium</div>
+            <div id="clock">00:00:00</div>
+        </footer>
+    </main>
+
+    <script>
+        const loadingScreen = document.getElementById('loading-screen');
+        const mainUI = document.getElementById('main-ui');
+        const loadProgress = document.getElementById('load-progress');
+
+        // Startup Simulation
+        window.onload = async () => {
+            // Fake progress bar
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    completeLoading();
+                }
+                loadProgress.style.width = `${progress}%`;
+            }, 100); // slightly faster load time for sub-menus
+
+            startClock();
+        };
+
+        function completeLoading() {
+            setTimeout(() => {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    mainUI.classList.remove('hidden');
+                    mainUI.classList.add('flex');
+                    setTimeout(() => mainUI.style.opacity = '1', 50);
+                }, 1000);
+            }, 300);
+        }
+
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('clock').innerText = now.toTimeString().split(' ')[0];
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

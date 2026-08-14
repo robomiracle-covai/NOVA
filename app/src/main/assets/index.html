@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Android Web Launcher - Jarvis Hologram Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600&family=Orbitron:wght@400;500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --jarvis-cyan: #00f3ff;
+            --jarvis-cyan-dim: rgba(0, 243, 255, 0.3);
+            --jarvis-gold: #ffb000;
+            --jarvis-dark: #030811;
+            --jarvis-panel: rgba(4, 15, 30, 0.7);
+        }
+
+        body {
+            background-color: var(--jarvis-dark);
+            background-image:
+                radial-gradient(circle at 50% 50%, #0a192f 0%, #02040a 100%),
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Roboto', sans-serif;
+            position: relative;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            color: var(--jarvis-cyan);
+        }
+
+        .scanlines {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            z-index: 50; pointer-events: none; opacity: 0.3;
+        }
+
+        #particle-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+        }
+
+        .cyber-line {
+            position: absolute;
+            background-color: var(--jarvis-cyan-dim);
+            z-index: 1; pointer-events: none;
+            overflow: hidden;
+            box-shadow: 0 0 8px var(--jarvis-cyan);
+        }
+        .cyber-line::after { content: ''; position: absolute; }
+        .cyber-line.v-1 { left: 10%; top: 0; width: 1px; height: 100%; opacity: 0.5; }
+        .cyber-line.v-2 { left: 90%; top: 0; width: 1px; height: 100%; opacity: 0.5; }
+        .cyber-line.h-1 { left: 0; top: 15%; width: 100%; height: 1px; opacity: 0.3; }
+        .cyber-line.h-2 { left: 0; bottom: 15%; width: 100%; height: 1px; opacity: 0.3; }
+        .cyber-line[class*="v-"]::after { top: -30%; left: 0; width: 100%; height: 30%; background: linear-gradient(to bottom, transparent, var(--jarvis-cyan), transparent); animation: flow-v 3s linear infinite; }
+        .cyber-line[class*="h-"]::after { left: -30%; top: 0; height: 100%; width: 30%; background: linear-gradient(to right, transparent, var(--jarvis-cyan), transparent); animation: flow-h 4s linear infinite; }
+        .v-1::after { animation-delay: 0s; } .v-2::after { animation-delay: 1.5s; }
+        .h-1::after { animation-delay: 2s; } .h-2::after { animation-delay: 0.8s; }
+        @keyframes flow-v { 100% { top: 120%; } }
+        @keyframes flow-h { 100% { left: 120%; } }
+
+        .jarvis-core-container {
+            margin-top: 8vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            position: relative; flex-shrink: 0; cursor: pointer;
+            width: 350px; height: 350px;
+        }
+
+        /* HUD Ring Positioning Wrapper (BEST PRACTICE) */
+        .hud-ring-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .hud-ring {
+            border-radius: 50%;
+            transform-origin: center center;
+            pointer-events: none;
+        }
+
+        .ring-1 { width: 320px; height: 320px; border: 1px solid rgba(0,243,255,0.15); border-top: 2px solid var(--jarvis-cyan); border-bottom: 2px solid var(--jarvis-cyan); animation: spin 12s linear infinite; box-shadow: 0 0 20px rgba(0,243,255,0.1) inset; }
+        .ring-2 { width: 290px; height: 290px; border: 2px dashed rgba(0,243,255,0.4); animation: spin-reverse 20s linear infinite; }
+        .ring-3 { width: 260px; height: 260px; border: 2px solid transparent; border-left: 3px solid var(--jarvis-gold); border-right: 3px solid var(--jarvis-gold); animation: spin 8s cubic-bezier(0.4,0,0.2,1) infinite; opacity: 0.7; }
+        .ring-4 { width: 200px; height: 200px; border: 1px dotted var(--jarvis-cyan); animation: spin-reverse 30s linear infinite; }
+        
+        .core-glow { width: 150px; height: 150px; background: radial-gradient(circle, rgba(0,243,255,0.15) 0%, transparent 70%); border-radius: 50%; animation: pulse-glow 2s ease-in-out infinite alternate; }
+        
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+        @keyframes pulse-glow { 0% { transform: scale(0.8); opacity: 0.5; box-shadow: 0 0 10px rgba(0,243,255,0.2); } 100% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 30px rgba(0,243,255,0.6); } }
+
+        .tech-font { font-family: 'Teko', sans-serif; text-shadow: 0 0 10px var(--jarvis-cyan), 0 0 20px rgba(0,243,255,0.5); }
+        .orbitron-font { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; }
+        .app-font { font-family: 'Roboto', sans-serif; }
+
+        .launcher-layout { height: 100vh; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; gap: 20px; z-index: 10; position: relative; }
+        .app-scroll-container { flex: 1; width: 100%; display: flex; flex-direction: column; position: relative; margin-top: 20px; min-height: 0; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent); }
+        .app-scroll-container::-webkit-scrollbar { display: none; }
+        .app-grid { display: flex; flex-direction: row; width: 100%; height: 100%; scroll-snap-type: x mandatory; overflow-x: scroll; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        .app-grid::-webkit-scrollbar { display: none; }
+        .app-page { min-width: 100%; height: 100%; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 1.5rem 1rem; justify-items: center; align-content: start; scroll-snap-align: start; box-sizing: border-box; padding: 20px; }
+        .pagination-dots { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 20; }
+        .dot { width: 25px; height: 4px; background: rgba(0,243,255,0.2); transition: all 0.3s ease; }
+        .dot.active { background: var(--jarvis-cyan); box-shadow: 0 0 8px var(--jarvis-cyan); }
+
+        @media (orientation: portrait) { .launcher-layout { flex-direction: column; padding: 10% 20px 20px 20px; align-items: center; } .jarvis-core-container { margin-bottom: 2rem; transform: scale(0.85); } .app-scroll-container { width: 100%; flex: 1; padding: 10px 0; } }
+        @media (orientation: landscape) { .launcher-layout { flex-direction: row; padding: 20px 5%; align-items: center; justify-content: space-around; } .jarvis-core-container { margin-top: 0; transform: scale(0.9); } .app-scroll-container { flex: 1; max-width: 60%; height: 85vh; padding: 20px 10px; } .app-page { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); grid-template-rows: none; align-content: center; } }
+
+        .app-wrapper { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.1s ease-in-out; position: relative; }
+        .app-wrapper:active { transform: scale(0.92); }
+        .hologram-box { width: 70px; height: 70px; background: var(--jarvis-panel); border: 1px solid rgba(0,243,255,0.3); display: flex; align-items: center; justify-content: center; position: relative; box-shadow: inset 0 0 15px rgba(0,243,255,0.1), 0 0 10px rgba(0,243,255,0.1); clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px); transition: all 0.3s ease; }
+        .hologram-box::before, .hologram-box::after { content: ''; position: absolute; width: 15px; height: 15px; border: 2px solid transparent; pointer-events: none; transition: all 0.3s ease; }
+        .hologram-box::before { top: 2px; left: 2px; border-top-color: var(--jarvis-cyan); border-left-color: var(--jarvis-cyan); }
+        .hologram-box::after { bottom: 2px; right: 2px; border-bottom-color: var(--jarvis-cyan); border-right-color: var(--jarvis-cyan); }
+        .app-wrapper:hover .hologram-box { background: rgba(0,243,255,0.15); box-shadow: inset 0 0 20px rgba(0,243,255,0.3), 0 0 15px rgba(0,243,255,0.3); border-color: var(--jarvis-cyan); }
+        .app-wrapper:hover .hologram-box::before { top: 0; left: 0; } .app-wrapper:hover .hologram-box::after { bottom: 0; right: 0; }
+        .hologram-box img { width: 42px; height: 42px; border-radius: 8px; filter: drop-shadow(0 0 5px rgba(0,243,255,0.5)); }
+        .app-name { margin-top: 10px; font-size: 0.75rem; color: var(--jarvis-cyan); font-weight: 500; text-shadow: 0 0 4px rgba(0,243,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; text-align: center; letter-spacing: 0.5px; text-transform: uppercase; }
+
+        #toast { position: fixed; bottom: -60px; left: 50%; transform: translateX(-50%); background: rgba(4,15,30,0.9); color: var(--jarvis-cyan); border: 1px solid var(--jarvis-cyan); box-shadow: 0 0 15px rgba(0,243,255,0.3); padding: 12px 25px; font-family: 'Orbitron', sans-serif; font-size: 0.85rem; letter-spacing: 1px; transition: bottom 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index: 100; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); text-transform: uppercase; }
+        #toast.show { bottom: 40px; }
+
+        #loading-apps { width: 100%; text-align: center; padding-top: 2rem; color: var(--jarvis-cyan); font-family: 'Orbitron', sans-serif; text-shadow: 0 0 8px var(--jarvis-cyan); animation: pulse-glow 1.5s infinite alternate; }
+
+        .system-status { position: absolute; top: 20px; right: 20px; font-family: 'Orbitron', sans-serif; font-size: 0.6rem; color: var(--jarvis-cyan); text-align: right; opacity: 0.7; text-shadow: 0 0 4px var(--jarvis-cyan); pointer-events: none; }
+        .sys-line { margin-bottom: 4px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+        .sys-dot { width: 4px; height: 4px; background: var(--jarvis-cyan); border-radius: 50%; box-shadow: 0 0 4px var(--jarvis-cyan); }
+        .sys-dot.gold { background: var(--jarvis-gold); box-shadow: 0 0 4px var(--jarvis-gold); animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .hud-modal { background: rgba(4,15,30,0.85); border: 1px solid var(--jarvis-cyan-dim); box-shadow: 0 0 30px rgba(0,243,255,0.1), inset 0 0 20px rgba(0,243,255,0.05); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 2.5rem; border-radius: 8px; width: 90%; max-width: 420px; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+        .hud-modal::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, var(--jarvis-cyan), transparent); }
+
+        .hud-input { width: 100%; padding: 14px 15px; background: rgba(0,243,255,0.03); border: 1px solid rgba(0,243,255,0.2); color: var(--jarvis-cyan); font-family: 'Orbitron', sans-serif; font-size: 0.9rem; outline: none; transition: all 0.3s ease; text-align: center; border-radius: 4px; letter-spacing: 1px; }
+        .hud-input:focus { border-color: var(--jarvis-cyan); box-shadow: 0 0 15px rgba(0,243,255,0.3); background: rgba(0,243,255,0.08); }
+        .hud-input::placeholder { color: rgba(0,243,255,0.3); font-family: 'Orbitron', sans-serif; }
+
+        .hud-btn { width: 100%; padding: 14px 20px; font-family: 'Orbitron', sans-serif; font-size: 0.85rem; letter-spacing: 2px; cursor: pointer; transition: all 0.3s ease; border-radius: 4px; text-transform: uppercase; }
+        .hud-btn-primary { background: rgba(0,243,255,0.1); border: 1px solid var(--jarvis-cyan); color: var(--jarvis-cyan); box-shadow: 0 0 10px rgba(0,243,255,0.15); }
+        .hud-btn-primary:hover { background: var(--jarvis-cyan); color: var(--jarvis-dark); box-shadow: 0 0 20px rgba(0,243,255,0.5); font-weight: bold; }
+        .hud-btn-ghost { background: transparent; border: 1px dashed rgba(0,243,255,0.4); color: rgba(0,243,255,0.7); }
+        .hud-btn-ghost:hover { border-color: var(--jarvis-cyan); color: var(--jarvis-cyan); background: rgba(0,243,255,0.05); }
+        .hud-btn-gold { background: rgba(255,176,0,0.1); border: 2px solid var(--jarvis-gold); color: var(--jarvis-gold); box-shadow: 0 0 15px rgba(255,176,0,0.2); font-size: 1rem; font-weight: 700; padding: 18px 20px; }
+        .hud-btn-gold:hover { background: var(--jarvis-gold); color: var(--jarvis-dark); box-shadow: 0 0 25px rgba(255,176,0,0.5); }
+
+        .hud-link { background: none; border: none; color: rgba(0,243,255,0.4); font-family: 'Orbitron', sans-serif; font-size: 0.75rem; cursor: pointer; text-decoration: none; transition: color 0.3s ease; margin-top: 15px; letter-spacing: 1px; }
+        .hud-link:hover { color: var(--jarvis-cyan); text-decoration: underline; }
+
+        .network-box { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,176,0,0.3); border-radius: 6px; padding: 16px; margin-bottom: 24px; width: 100%; position: relative; }
+        .network-box::before { content: ''; position: absolute; left: 0; top: 10%; width: 2px; height: 80%; background: var(--jarvis-gold); }
+
+        .loading-dots-container { display: inline-block; width: 24px; text-align: left; }
+
+        .wifi-icon-pulse { width: 60px; height: 60px; margin-bottom: 16px; position: relative; display: flex; align-items: center; justify-content: center; }
+        .wifi-icon-pulse svg { width: 48px; height: 48px; color: var(--jarvis-gold); filter: drop-shadow(0 0 8px rgba(255,176,0,0.5)); }
+        .wifi-icon-pulse::after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px solid rgba(255,176,0,0.3); animation: wifi-ring-expand 2s ease-out infinite; }
+        @keyframes wifi-ring-expand { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
+
+        .countdown-big { font-family: 'Orbitron', sans-serif; font-size: 4rem; font-weight: 700; color: var(--jarvis-cyan); text-shadow: 0 0 30px rgba(0,243,255,0.6); line-height: 1; margin: 12px 0; }
+
+        .scan-progress-bar { width: 100%; height: 3px; background: rgba(0,243,255,0.1); border-radius: 2px; margin-top: 8px; overflow: hidden; position: relative; }
+        .scan-progress-bar::after { content: ''; position: absolute; top: 0; left: -40%; width: 40%; height: 100%; background: linear-gradient(90deg, transparent, var(--jarvis-cyan), transparent); animation: progress-sweep 1.2s linear infinite; }
+        @keyframes progress-sweep { 0% { left: -40%; } 100% { left: 100%; } }
+    </style>
+</head>
+
+<body>
+
+<!-- Setup Overlay -->
+<div id="setup-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(2, 6, 12, 0.92); z-index:9000; flex-direction:column; align-items:center; justify-content:center;">
+    <div class="hud-modal" id="hud-modal-inner">
+
+        <!-- Step 1: Connect to Robot AP -->
+        <div id="setup-step1" class="w-full flex flex-col items-center text-center" style="display:flex;">
+            <h1 class="orbitron-font text-2xl mb-2 text-[#00f3ff] drop-shadow-[0_0_8px_#00f3ff]">NOVA CORE LINK</h1>
+            <p class="app-font text-[0.85rem] text-slate-400 mb-6 leading-relaxed">Connect your device to the robot hotspot to initialize configuration.</p>
+            
+            <div class="network-box">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-slate-400 text-xs tracking-widest font-semibold">SSID</span>
+                    <span class="orbitron-font text-[#ffb000] tracking-wider drop-shadow-[0_0_4px_rgba(255,176,0,0.5)]">NOVA_A1</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400 text-xs tracking-widest font-semibold">PASS</span>
+                    <span class="orbitron-font text-[#ffb000] tracking-wider drop-shadow-[0_0_4px_rgba(255,176,0,0.5)]">12345678</span>
+                </div>
+            </div>
+
+            <button onclick="AndroidLauncher.openWifiSettings()" class="hud-btn hud-btn-primary mb-6">OPEN NETWORK SETTINGS</button>
+
+            <div class="flex flex-col items-center justify-center w-full min-h-[60px]">
+                <p id="detecting-text" class="orbitron-font text-xs text-cyan-400 animate-pulse tracking-widest">
+                    WAITING FOR UPLINK<span id="loading-dots-1" class="loading-dots-container">...</span>
+                </p>
+            </div>
+            <button onclick="skipSetup()" class="hud-link">SKIP CONFIGURATION</button>
+            <div class="w-full mt-4 flex justify-center">
+                <button onclick="document.getElementById('manualIpDiv1').classList.toggle('hidden')" class="hud-link text-[10px] text-slate-500 hover:text-[#00f3ff]">MANUAL IP ENTRY</button>
+            </div>
+            <div id="manualIpDiv1" class="hidden w-full mt-2 flex gap-2">
+                <input type="text" id="manualIpInput1" placeholder="IP (e.g. 192.168.0.5)" class="hud-input text-xs" autocomplete="off" />
+                <button onclick="connectManualIp(document.getElementById('manualIpInput1').value.trim())" class="hud-btn hud-btn-primary text-xs" style="width: auto; padding: 8px 12px;">GO</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Configure Home WiFi -->
+        <div id="setup-step2" class="w-full flex flex-col items-center text-center" style="display:none;">
+            <h1 class="orbitron-font text-2xl mb-2 text-[#00f3ff] drop-shadow-[0_0_8px_#00f3ff]">CONFIGURE UPLINK</h1>
+            <p class="app-font text-[0.85rem] text-slate-400 mb-6 leading-relaxed">Enter your local network credentials to shift the robot into station mode.</p>
+            <div class="w-full space-y-4 mb-6">
+                <input type="text" id="homeSsid" placeholder="NETWORK SSID" class="hud-input" autocomplete="off" />
+                <input type="password" id="homePass" placeholder="SECURITY KEY" class="hud-input" autocomplete="off" />
+            </div>
+            <button onclick="sendWifiConfig()" class="hud-btn hud-btn-primary mb-2">CONNECT</button>
+            <button onclick="skipSetup()" class="hud-link mt-4">SKIP FOR NOW</button>
+        </div>
+
+        <!-- Step 3a: Wait for user to switch back -->
+        <div id="setup-step3a" class="w-full flex flex-col items-center text-center" style="display:none;">
+            <div class="wifi-icon-pulse">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/>
+                </svg>
+            </div>
+            <h1 class="orbitron-font text-xl mb-2 text-[#00f3ff] drop-shadow-[0_0_8px_#00f3ff]">SWITCH YOUR WIFI</h1>
+            <p class="app-font text-[0.8rem] text-slate-400 mb-2 leading-relaxed">Robot is rebooting and joining your network.</p>
+            <p class="app-font text-[0.75rem] text-slate-500 mb-8 leading-relaxed">Please switch this device to the <span class="text-[#ffb000] font-semibold">same network</span>.</p>
+            
+            <button onclick="AndroidLauncher.openWifiSettings()" class="hud-btn hud-btn-ghost mb-4">OPEN NETWORK SETTINGS</button>
+            <button onclick="startScanningLoader()" class="hud-btn hud-btn-primary mb-4">I HAVE CONNECTED TO SAME NETWORK</button>
+            
+            <button onclick="skipSetup()" class="hud-link mt-2">RUN OFFLINE MODE</button>
+        </div>
+
+        <!-- Step 3b: Loader Scanning for Robot -->
+        <div id="setup-step3b" class="w-full flex flex-col items-center text-center" style="display:none;">
+            <div class="relative w-24 h-24 mb-6 flex items-center justify-center">
+                <div class="absolute w-full h-full border-2 border-t-[#00f3ff] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" style="animation-duration: 1.2s;"></div>
+                <div class="absolute w-20 h-20 border-2 border-b-[#ffb000] border-r-transparent border-t-transparent border-l-transparent rounded-full animate-spin" style="animation-duration: 2s; animation-direction: reverse;"></div>
+                <svg class="w-10 h-10 text-[#00f3ff] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                </svg>
+            </div>
+            <h1 class="orbitron-font text-xl mb-2 text-[#00f3ff] drop-shadow-[0_0_8px_#00f3ff]">SCANNING NETWORK</h1>
+            <p class="app-font text-[0.8rem] text-slate-400 mb-6 leading-relaxed">Locating NOVA Core on your local network. Please wait...</p>
+            <div class="scan-progress-bar mb-6"></div>
+            <div class="w-full mb-4 px-2">
+                <div class="flex gap-2">
+                    <input type="text" id="manualIpInput3" placeholder="MANUAL IP OVERRIDE" class="hud-input text-xs" autocomplete="off" />
+                    <button onclick="connectManualIp(document.getElementById('manualIpInput3').value.trim())" class="hud-btn hud-btn-primary text-xs" style="width: auto; padding: 8px 12px;">CONNECT</button>
+                </div>
+            </div>
+            <button onclick="showStep3a()" class="hud-link mt-2">BACK TO SWITCH NETWORK</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- Background -->
+<canvas id="particle-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="cyber-line v-1"></div>
+<div class="cyber-line v-2"></div>
+<div class="cyber-line h-1"></div>
+<div class="cyber-line h-2"></div>
+
+<!-- Top Right System Status -->
+<div class="system-status">
+    <div class="sys-line">SYS.CORE.ONLINE <div class="sys-dot"></div></div>
+    <div class="sys-line">MEM.ALLOC.OPT <div class="sys-dot"></div></div>
+    <div class="sys-line" id="net-status">UPLINK.SECURE <div class="sys-dot gold"></div></div>
+</div>
+
+<div class="launcher-layout">
+    <div class="jarvis-core-container tech-font">
+        <!-- Wrappers applied following the BEST PRACTICE for perfectly centered rotation -->
+        <div class="hud-ring-wrapper"><div class="core-glow"></div></div>
+        <div class="hud-ring-wrapper"><div class="hud-ring ring-1"></div></div>
+        <div class="hud-ring-wrapper"><div class="hud-ring ring-2"></div></div>
+        <div class="hud-ring-wrapper"><div class="hud-ring ring-3"></div></div>
+        <div class="hud-ring-wrapper"><div class="hud-ring ring-4"></div></div>
+        
+        <div class="relative z-10 flex flex-col items-center justify-center h-full w-full">
+            <div id="day" class="text-3xl leading-none orbitron-font text-[#ffb000] tracking-widest drop-shadow-[0_0_8px_rgba(255,176,0,0.8)]">SAT</div>
+            <div id="time" class="text-[8.5rem] leading-[0.8] font-semibold my-1 text-center" style="margin-left: -5px;">12:12</div>
+            <div id="date" class="text-3xl leading-none tracking-widest mt-2 orbitron-font text-[rgba(0,243,255,0.8)]">21.02.26</div>
+        </div>
+    </div>
+
+    <div class="app-scroll-container">
+        <div class="app-grid" id="appGrid">
+            <div id="loading-apps">INITIALIZING PROTOCOLS...</div>
+        </div>
+        <div class="pagination-dots" id="paginationDots"></div>
+        <div id="app-counter" class="orbitron-font" style="position: absolute; bottom: 5px; right: 20px; color: var(--jarvis-cyan); opacity: 0.6; font-size: 10px; letter-spacing: 1px;"></div>
+    </div>
+</div>
+
+<div id="toast">SYS.OVERRIDE_ACT...</div>
+
+<script>
+
+    const AP_IP = '192.168.4.1';
+    const MDNS_HOST = 'nova-robot.local';
+
+    let robotIP = null;
+    let isVerifying = false;
+    let isChecking = false;
+    let consecutiveFails = 0;
+    const FAIL_THRESHOLD = 3;
+    let isConnected = false;
+    let isConfigured = false;
+    let failedConnections = 0;
+    let checkRobotInterval;
+    let isPostSetupGrace = false; 
+    let apModeSkipped = false; // Tracks if user manually opted to skip setup
+
+    /** 1. CLOCK */
+    function updateClock() {
+        const now = new Date();
+        const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+        document.getElementById('day').innerText = days[now.getDay()];
+        let h = now.getHours(), m = now.getMinutes();
+        document.getElementById('time').innerText = `${h<10?'0'+h:h}:${m<10?'0'+m:m}`;
+        let d = now.getDate(), mo = now.getMonth()+1, y = now.getFullYear().toString().slice(-2);
+        document.getElementById('date').innerText = `${d<10?'0'+d:d}.${mo<10?'0'+mo:mo}.${y}`;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+
+    /** 2. ANDROID APPS */
+    let realAppsList = [];
+    function getInitialsIcon(n) { return `<div style="width:42px;height:42px;background:rgba(0,243,255,0.1);border:1px solid rgba(0,243,255,0.5);display:flex;align-items:center;justify-content:center;color:var(--jarvis-cyan);font-weight:bold;font-family:'Orbitron',sans-serif;font-size:20px;text-shadow:0 0 8px var(--jarvis-cyan);box-shadow:inset 0 0 10px rgba(0,243,255,0.2);">${n?n.charAt(0).toUpperCase():'?'}</div>`; }
+
+    window.receiveRealApps = function(json) {
+        try {
+            realAppsList = JSON.parse(json);
+            realAppsList = realAppsList.filter(a => !a.name.toLowerCase().includes("fm radio"));
+            realAppsList.unshift({name:"N.O.V.A",pkg:"com.nova.launcher.internal",iconBase64:null,isVirtual:true});
+            realAppsList.unshift({name:"SYS.PREFS",pkg:"com.nova.settings",iconBase64:null,isVirtual:true});
+            renderApps();
+        } catch(e) { document.getElementById('appGrid').innerHTML = `<div id="loading-apps">SYS.DATA.ERR</div>`; }
+    };
+    function requestApps() { if (window.AndroidLauncher && typeof window.AndroidLauncher.getApps === 'function') window.AndroidLauncher.getApps(); }
+    const appLoadCheck = setInterval(() => { if (realAppsList.length > 0) clearInterval(appLoadCheck); else requestApps(); }, 1000);
+
+    function renderApps() {
+        const grid = document.getElementById('appGrid'), dots = document.getElementById('paginationDots');
+        grid.innerHTML = ''; dots.innerHTML = '';
+        const pp = 16, pages = Math.ceil(realAppsList.length / pp);
+        document.getElementById('app-counter').innerText = `IDX // ${realAppsList.length}`;
+        for (let p = 0; p < pages; p++) {
+            const pg = document.createElement('div'); pg.className = 'app-page';
+            realAppsList.slice(p*pp,(p+1)*pp).forEach(app => {
+                const el = document.createElement('div'); el.className = 'app-wrapper';
+                el.onclick = (e) => { e.stopPropagation(); el.querySelector('.hologram-box').style.background='rgba(255,176,0,0.3)'; el.querySelector('.hologram-box').style.borderColor='var(--jarvis-gold)'; setTimeout(()=>handleAppLaunch(app.pkg,app.name),150); };
+                const ico = app.iconBase64 ? `<img src="data:image/png;base64,${app.iconBase64}" alt="${app.name}"/>` :
+                    (app.isVirtual ? (app.pkg==="com.nova.launcher.internal" ? `<svg class="w-10 h-10" style="color:var(--jarvis-cyan);filter:drop-shadow(0 0 5px var(--jarvis-cyan));" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>` : `<svg class="w-9 h-9" style="color:var(--jarvis-gold);filter:drop-shadow(0 0 5px var(--jarvis-gold));" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`) : getInitialsIcon(app.name));
+                el.innerHTML = `<div class="hologram-box">${ico}</div><div class="app-name app-font">${app.name}</div>`;
+                pg.appendChild(el);
+            });
+            grid.appendChild(pg);
+            const dot = document.createElement('div'); dot.className = 'dot'+(p===0?' active':''); dots.appendChild(dot);
+        }
+        grid.onscroll = () => { const idx = Math.round(grid.scrollLeft/grid.offsetWidth); dots.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===idx)); };
+    }
+
+    function handleAppLaunch(pkg, name) {
+        if (pkg==="com.nova.settings"){window.location.href='settings.html';return;}
+        if (pkg==="com.android.settings"){window.location.href='lock.html';return;}
+        if (pkg==="com.nova.launcher.internal"){window.location.href='nova.html';return;}
+        if (window.AndroidLauncher&&typeof window.AndroidLauncher.openApp==='function'){window.AndroidLauncher.openApp(pkg);showToast(`EXE // ${name}`);}
+        else showToast(`ERR // OFFLINE: ${name}`);
+    }
+
+    let toastTimeout;
+    function showToast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); clearTimeout(toastTimeout); toastTimeout=setTimeout(()=>t.classList.remove('show'),2000); }
+
+
+    /** 3. PARTICLES */
+    class ParticleBackground {
+        constructor(){this.c=document.getElementById('particle-canvas');this.x=this.c.getContext('2d');this.p=[];this.r();window.addEventListener('resize',()=>this.r());this.i();this.a();}
+        r(){this.c.width=window.innerWidth;this.c.height=window.innerHeight;}
+        i(){for(let i=0;i<25;i++){const g=Math.random()>0.85;this.p.push({x:Math.random()*this.c.width,y:Math.random()*this.c.height,s:Math.random()*1.5+0.5,sx:(Math.random()-0.5)*0.4,sy:(Math.random()-0.5)*0.4,o:Math.random()*0.6+0.2,c:g?'255,176,0':'0,243,255'});}}
+        a(){this.x.clearRect(0,0,this.c.width,this.c.height);this.p.forEach(p=>{p.x+=p.sx;p.y+=p.sy;if(p.x<0)p.x=this.c.width;if(p.x>this.c.width)p.x=0;if(p.y<0)p.y=this.c.height;if(p.y>this.c.height)p.y=0;this.x.beginPath();this.x.arc(p.x,p.y,p.s,0,Math.PI*2);this.x.fillStyle=`rgba(${p.c},${p.o})`;this.x.shadowBlur=5;this.x.shadowColor=`rgba(${p.c},0.8)`;this.x.fill();this.x.shadowBlur=0;});requestAnimationFrame(()=>this.a());}
+    }
+    new ParticleBackground();
+
+
+    /**
+     * ================================================================
+     * 4. FAST CONNECT LOGIC
+     * ================================================================
+     */
+
+    let isSubnetScanning = false;
+
+    async function startSubnetScan() {
+        if (isSubnetScanning || isConnected) return;
+        const phoneInfo = getPhoneWifiInfo();
+        if (!phoneInfo.ip || phoneInfo.ip === '---' || phoneInfo.ip === '0.0.0.0') return;
+        
+        let parts = phoneInfo.ip.split('.');
+        if (parts.length !== 4) return;
+        
+        let baseIp = parts.slice(0, 3).join('.') + '.';
+        isSubnetScanning = true;
+        console.log("[SCAN] Subnet scanning on " + baseIp + "1 to 254");
+        
+        const fetchWithTimeout = async (url, ms) => {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), ms);
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        };
+
+        const batchSize = 20;
+        for (let i = 1; i <= 254; i += batchSize) {
+            if (isConnected) break;
+            const promises = [];
+            for (let j = 0; j < batchSize && (i + j) <= 254; j++) {
+                const ip = baseIp + (i + j);
+                if (ip === phoneInfo.ip) continue;
+                promises.push(
+                    fetchWithTimeout(`http://${ip}/status`, 1200)
+                    .then(res => res.ok ? res.json() : null)
+                    .then(data => data ? {ip, data} : null)
+                    .catch(() => null)
+                );
+            }
+            const results = await Promise.all(promises);
+            const found = results.find(r => r !== null);
+            if (found && !isConnected) {
+                console.log("[SCAN] Found robot at " + found.ip);
+                onConnected(found.data);
+                localStorage.setItem("robot_ip", found.ip);
+                maintainWebSocket();
+                break;
+            }
+        }
+        
+        isSubnetScanning = false;
+    }
+
+    async function connectManualIp(ip) {
+        if (!ip) return;
+        showToast("TRYING " + ip);
+        try {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 2000);
+            const res = await fetch(`http://${ip}/status`, { signal: controller.signal });
+            clearTimeout(id);
+            if (res.ok) {
+                const data = await res.json();
+                onConnected(data);
+                localStorage.setItem("robot_ip", ip);
+                maintainWebSocket();
+                showToast("CONNECTED");
+            } else {
+                showToast("ERR // INVALID RESPONSE");
+            }
+        } catch(e) {
+            showToast("ERR // CONNECTION FAILED");
+        }
+    }
+
+    async function fastConnect() {
+        if (isChecking) return;
+        isChecking = true;
+
+        // Helper for fetch timeout implementation
+        const fetchWithTimeout = async (url, ms) => {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), ms);
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        };
+
+        try {
+            // 1️⃣ Try saved IP (FASTEST)
+            let savedIP = localStorage.getItem("robot_ip");
+            if (savedIP) {
+                try {
+                    let res = await fetchWithTimeout(`http://${savedIP}/status`, 1000);
+                    if (res.ok) {
+                        let data = await res.json();
+                        onConnected(data);
+                        maintainWebSocket();
+                        return;
+                    }
+                } catch (e) { /* Ignore, try next */ }
+            }
+
+            // 2️⃣ Try AP mode
+            try {
+                let resAP = await fetchWithTimeout(`http://${AP_IP}/status`, 1000);
+                if (resAP.ok) {
+                    let data = await resAP.json();
+                    onConnected(data);
+                    maintainWebSocket();
+                    return;
+                }
+            } catch (e) { /* Ignore */ }
+
+            // 3️⃣ Try mDNS (only fallback)
+            try {
+                let resMDNS = await fetchWithTimeout(`http://${MDNS_HOST}/status`, 1500);
+                if (resMDNS.ok) {
+                    let data = await resMDNS.json();
+                    onConnected(data);
+
+                    // 💾 Save IP for next time
+                    localStorage.setItem("robot_ip", data.ip_address);
+
+                    maintainWebSocket();
+                    return;
+                }
+            } catch (e) { /* Ignore */ }
+
+            // 4️⃣ Try subnet scanning if not already doing so
+            if (!isSubnetScanning && !isConnected) {
+                startSubnetScan();
+            }
+
+            onDisconnected();
+
+        } catch (e) {
+            onDisconnected();
+        } finally {
+            isChecking = false;
+        }
+    }
+
+    /** Extract real IP from /status response */
+    function extractIPFromStatus(data) {
+        if (!data || !data.ip_address) return null;
+        const ip = data.ip_address;
+        if (ip === '0.0.0.0' || ip === '') return null;
+        const mode = (data.wifi_mode || '').toLowerCase();
+        const isStation = mode === 'station' || mode === 'sta' || mode === 'ap+sta';
+        robotIP = ip;
+        if (isStation && ip !== AP_IP) {
+            if (window.AndroidLauncher && typeof window.AndroidLauncher.saveRobotIP === 'function') {
+                window.AndroidLauncher.saveRobotIP(ip);
+            }
+            console.log(`[DISCOVERY] Station IP: ${ip}`);
+        } else {
+            console.log(`[DISCOVERY] AP IP: ${ip}`);
+        }
+        return ip;
+    }
+
+    /** Get phone WiFi info via Android bridge */
+    function getPhoneWifiInfo() {
+        let ssid = 'UNKNOWN', ip = '---';
+        if (window.AndroidLauncher) {
+            if (typeof window.AndroidLauncher.getConnectedSSID === 'function') { const s = window.AndroidLauncher.getConnectedSSID(); if (s && s.length > 0) ssid = s; }
+            if (typeof window.AndroidLauncher.getPhoneIP === 'function') { const i = window.AndroidLauncher.getPhoneIP(); if (i && i.length > 0) ip = i; }
+        }
+        return { ssid, ip };
+    }
+
+
+    /** Network UI */
+    function updateNetworkUI(state, data) {
+        const el = document.getElementById('net-status');
+        if (state === "connecting") { el.innerHTML = "UPLINK.CONNECTING <div class='sys-dot'></div>"; el.style.cssText = 'display:flex;align-items:center;text-align:right;'; }
+        else if (state === "connected") {
+            let sig = '';
+            if (data && data.rssi_dbm !== undefined) { let s = Math.min(100, Math.max(0, 2*(parseInt(data.rssi_dbm)+100))); sig = `<br><span style="color:var(--jarvis-gold)">SIG:${s}%</span>`; }
+            el.innerHTML = `<div style="line-height:1.4">SSID:${data.connected_ssid||'?'}<br>IP:${data.ip_address||'?'}<br>MODE:${(data.wifi_mode||'?').toUpperCase()}<br>WS:${data.ws_clients||'0'}<br>UP:${data.uptime_s||'0'}s${sig}</div><div class='sys-dot gold' style="margin-left:6px;margin-top:3px"></div>`;
+            el.style.cssText = 'display:flex;align-items:flex-start;text-align:right;';
+        } else { el.innerHTML = "UPLINK.OFFLINE"; el.style.cssText = 'display:flex;align-items:center;text-align:right;'; }
+    }
+
+
+    /** State machine */
+    function updateFlow() {
+        if (isVerifying) return; // Ignore flow logic if we are actively showing scan/verification screens
+        
+        if (!isConnected && !isPostSetupGrace) {
+            if (!apModeSkipped) {
+                showSetup(); // Still offline, show Step 1
+            } else {
+                showMainUI(); // They skipped, stay offline in Main UI
+            }
+        } else if (isConnected) {
+            // We found a connection. If it's the AP, show the config UI. Otherwise Main UI.
+            if (robotIP === AP_IP && !apModeSkipped) {
+                showConfig();
+            } else {
+                showMainUI();
+            }
+        }
+    }
+
+    function hideAllSteps() {
+        ['setup-step1','setup-step2','setup-step3a','setup-step3b'].forEach(id => document.getElementById(id).style.display = 'none');
+    }
+
+    function showSetup() { document.getElementById('setup-overlay').style.display = 'flex'; hideAllSteps(); document.getElementById('setup-step1').style.display = 'flex'; }
+    function showConfig() { 
+        document.getElementById('setup-overlay').style.display = 'flex'; 
+        hideAllSteps(); 
+        document.getElementById('setup-step2').style.display = 'flex'; 
+    }
+    function showStep3a() {
+        isVerifying = true;
+        document.getElementById('setup-overlay').style.display = 'flex'; 
+        hideAllSteps();
+        document.getElementById('setup-step3a').style.display = 'flex';
+    }
+    function startScanningLoader() {
+        isVerifying = true; // Ensure verification state persists
+        document.getElementById('setup-overlay').style.display = 'flex'; 
+        hideAllSteps();
+        document.getElementById('setup-step3b').style.display = 'flex';
+        fastConnect(); // Force immediate check while showing loader
+    }
+    function showMainUI() { 
+        document.getElementById('setup-overlay').style.display = 'none'; 
+        isVerifying = false;
+    }
+
+    function onConnected(data) {
+        consecutiveFails = 0;
+        extractIPFromStatus(data);
+        isConnected = true;
+        isPostSetupGrace = false; 
+        const mode = (data && data.wifi_mode) ? data.wifi_mode.toLowerCase() : '';
+        isConfigured = (mode === 'station' || mode === 'sta' || mode === 'ap+sta');
+        failedConnections = 0;
+        
+        const dt = document.getElementById('detecting-text');
+        if (dt) dt.style.display = 'block';
+        updateNetworkUI("connected", data);
+        
+        if (isVerifying) {
+            // If we're verifying, watch for the shift from AP Mode -> Station Mode
+            if (robotIP !== AP_IP) {
+                showToast("UPLINK SECURED");
+                isVerifying = false;
+                showMainUI();
+            }
+        } else {
+            // If not verifying, rely on flow logic to determine the correct overlay 
+            updateFlow();
+        }
+    }
+
+    function onDisconnected() {
+        consecutiveFails++;
+        if (consecutiveFails < FAIL_THRESHOLD) return;
+        isConnected = false; isConfigured = false; failedConnections++;
+        robotIP = null;
+        updateNetworkUI("offline");
+        
+        if (failedConnections > 2 && !localStorage.getItem("nova_setup_done") && !isVerifying && !apModeSkipped) {
+            const dt = document.getElementById('detecting-text');
+            if (dt) dt.style.display = 'block';
+        }
+        if(!isVerifying) updateFlow();
+    }
+
+
+    /**
+     * ================================================================
+     * STEP 3 FLOW
+     * Step 2 -> Save Config -> Step 3a (Wait for switch) -> Step 3b (Loader) -> Main UI
+     * ================================================================
+     */
+
+    function startVerificationStep() {
+        isVerifying = true;
+        showStep3a();
+    }
+
+    /** WiFi config send */
+    function sendWifiConfig() {
+        const ssid = document.getElementById('homeSsid').value.trim();
+        const pass = document.getElementById('homePass').value;
+        if (!ssid) { showToast("ERR // NO SSID"); return; }
+        
+        // Robot Endpoint: /savewifi
+        fetch(`http://${AP_IP}/savewifi?ssid=`+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass), {mode:'no-cors'})
+        .then(() => { 
+            showToast("UPLINK SYNC INITIATED"); 
+            localStorage.removeItem("nova_setup_done"); 
+            // Go to Step 3a
+            startVerificationStep(); 
+        })
+        .catch(() => { 
+            showToast("UPLINK SYNC INITIATED"); 
+            localStorage.removeItem("nova_setup_done"); 
+            // Go to Step 3a anyway, assuming server responded with 200 OK even if CORS blocked body
+            startVerificationStep(); 
+        });
+    }
+
+    function skipSetup() {
+        isVerifying = false;
+        apModeSkipped = true; // Prevents the configuration modal from incessantly popping up
+        showMainUI();
+    }
+
+
+    /** 5. WEBSOCKET */
+    let ws;
+    function maintainWebSocket() {
+        if (!robotIP) return;
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+        try {
+            ws = new WebSocket(`ws://${robotIP}/ws`);
+            ws.onopen = () => console.log(`[WS] Connected to ${robotIP}`);
+            ws.onmessage = (e) => { if (e.data === 'ping') ws.send(JSON.stringify({cmd:'pong'})); };
+            ws.onclose = () => { console.log('[WS] Disconnected'); ws = null; };
+            ws.onerror = () => { ws = null; };
+        } catch(e) { ws = null; }
+    }
+
+
+    /** 6. INIT */
+    function initRobotSetup() {
+        if (!localStorage.getItem("nova_setup_done")) { showSetup(); } else { showMainUI(); }
+        updateNetworkUI("connecting");
+        // FAST CONNECT LOOP
+        fastConnect();
+        checkRobotInterval = setInterval(fastConnect, 3000);
+
+        let d = 0;
+        setInterval(() => { d=(d+1)%4; const e1=document.getElementById('loading-dots-1'); if(e1) e1.innerText='.'.repeat(d); }, 400);
+    }
+
+    window.addEventListener('load', initRobotSetup);
+
+</script>
+</body>
+</html>

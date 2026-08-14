@@ -1,0 +1,81 @@
+plugins {
+    id 'com.android.application'
+    id 'com.chaquo.python'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.nova.launcher'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.nova.launcher'
+        minSdk 24
+        targetSdk 34
+        versionCode 2
+        versionName "2.0"
+        multiDexEnabled true
+        
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+        }
+        python {
+            version "3.11"
+            pip {
+                install "pip"
+            }
+        }
+    }
+
+    androidResources {
+        noCompress 'onnx', 'txt', 'bin', 'data'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+        freeCompilerArgs += ['-Xskip-metadata-version-check']
+    }
+
+    buildToolsVersion '34.0.0'
+
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.core:core:1.13.1'
+            force 'androidx.appcompat:appcompat:1.7.0'
+            force 'org.jetbrains.kotlin:kotlin-stdlib:2.0.21'
+        }
+    }
+}
+
+dependencies {
+    implementation('androidx.appcompat:appcompat:1.7.0') {
+        exclude group: 'androidx.core'
+        exclude group: 'org.jetbrains.kotlin'
+    }
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
+    
+    // Local AI Engine
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    
+    // Sherpa-ONNX Local TTS
+    implementation(files("libs/sherpa-onnx-1.13.2.aar"))
+}

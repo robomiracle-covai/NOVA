@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NOVA — Robot Control Interface (Teach Mode)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cyan: #00f2ff;
+            --blue: #0066ff;
+            --bg: #030a12;
+            --panel: rgba(0,242,255,0.03);
+            --border: rgba(0,242,255,0.15);
+            --glow: 0 0 15px rgba(0,242,255,0.4);
+            --glow-strong: 0 0 30px rgba(0,242,255,0.6);
+            --red: #ff3344;
+            --green: #00ff88;
+            --amber: #ffaa00;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--cyan);
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        .fira { font-family: 'Fira Code', monospace; }
+
+        .grid-bg {
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,242,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,242,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none; z-index: 0;
+        }
+
+        #app {
+            display: flex; flex-direction: column; height: 100vh; height: 100dvh;
+            padding: 8px 12px; max-width: 1600px; margin: 0 auto; gap: 8px;
+            position: relative; z-index: 1;
+        }
+
+        .tab-view { flex: 1; display: flex; gap: 8px; min-height: 0; overflow: hidden; }
+
+        .col-left { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 2px; }
+        .col-center { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto; padding-right: 2px; }
+        .col-right { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 2px; }
+
+        .glass {
+            background: var(--panel); backdrop-filter: blur(12px); border: 1px solid var(--border);
+            border-radius: 8px; box-shadow: inset 0 0 20px rgba(0,242,255,0.02); position: relative; overflow: hidden;
+        }
+        
+        .flex-1-glass { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+        .glass-bright { border-color: rgba(0,242,255,0.3); box-shadow: var(--glow), inset 0 0 20px rgba(0,242,255,0.05); }
+
+        .scrollable-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+
+        .app-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; border-bottom: 1px solid rgba(0,242,255,0.12); flex-shrink: 0; gap: 12px; }
+        .header-logo-tabs { display: flex; align-items: center; gap: 16px; }
+        .header-brand { display: flex; align-items: center; gap: 12px; }
+        .header-tabs { display: flex; gap: 6px; }
+        .header-controls { display: flex; align-items: center; gap: 20px; }
+
+        .servo-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; background: rgba(0,242,255,0.15); outline: none; cursor: pointer; }
+        .servo-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan); cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+        .servo-slider::-webkit-slider-thumb:active { transform: scale(1.3); box-shadow: 0 0 20px var(--cyan); }
+        .servo-slider.amber::-webkit-slider-thumb { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+        .servo-slider.green::-webkit-slider-thumb { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .servo-slider.red-s::-webkit-slider-thumb { background: #ff6688; box-shadow: 0 0 8px #ff6688; }
+
+        .tab-btn { padding: 6px 14px; border: 1px solid rgba(0,242,255,0.2); border-radius: 4px; font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: 0.1em; color: rgba(0,242,255,0.5); background: transparent; cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { background: rgba(0,242,255,0.1); border-color: var(--cyan); color: var(--cyan); box-shadow: var(--glow); }
+        .tab-btn:hover { color: var(--cyan); border-color: rgba(0,242,255,0.5); }
+
+        .ctrl-btn { font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: 0.08em; border: 1px solid rgba(0,242,255,0.3); border-radius: 4px; background: rgba(0,242,255,0.05); color: var(--cyan); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+        .ctrl-btn:hover { background: rgba(0,242,255,0.12); border-color: var(--cyan); box-shadow: var(--glow); }
+        .ctrl-btn:active { transform: scale(0.95); }
+        .ctrl-btn.danger { border-color: rgba(255,51,68,0.4); color: var(--red); background: rgba(255,51,68,0.05); }
+        .ctrl-btn.danger:hover { background: rgba(255,51,68,0.15); border-color: var(--red); box-shadow: 0 0 15px rgba(255,51,68,0.4); }
+        .ctrl-btn.success { border-color: rgba(0,255,136,0.4); color: var(--green); background: rgba(0,255,136,0.05); }
+        .ctrl-btn.success:hover { background: rgba(0,255,136,0.15); border-color: var(--green); }
+        .ctrl-btn.amber-btn { border-color: rgba(255,170,0,0.4); color: var(--amber); background: rgba(255,170,0,0.05); }
+        .ctrl-btn.amber-btn.active-state { background: rgba(255,170,0,0.2); border-color: var(--amber); box-shadow: 0 0 15px rgba(255,170,0,0.5); animation: pulse-amber 1s infinite alternate; }
+        
+        @keyframes pulse-amber { from { box-shadow: 0 0 10px rgba(255,170,0,0.3); } to { box-shadow: 0 0 25px rgba(255,170,0,0.7); } }
+
+        .hold-btn { font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: 0.08em; border: 1px solid rgba(0,242,255,0.3); border-radius: 4px; background: rgba(0,242,255,0.05); color: var(--cyan); cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; -webkit-user-select: none; }
+        .hold-btn.recording { border-color: var(--red); color: var(--red); background: rgba(255,51,68,0.1); box-shadow: 0 0 15px rgba(255,51,68,0.4); }
+        .hold-btn-fill { position: absolute; left: 0; top: 0; height: 100%; background: rgba(0,242,255,0.08); width: 0%; transition: none; pointer-events: none; }
+
+        .d-pad { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 4px; }
+        .d-pad-btn { padding: 0 !important; }
+
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: rgba(0,242,255,0.03); }
+        ::-webkit-scrollbar-thumb { background: rgba(0,242,255,0.25); border-radius: 2px; }
+
+        .seq-item { background: rgba(0,242,255,0.04); border: 1px solid rgba(0,242,255,0.1); border-radius: 4px; padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+        .seq-item:hover { border-color: rgba(0,242,255,0.35); background: rgba(0,242,255,0.08); }
+        .seq-item.playing { border-color: var(--green); box-shadow: 0 0 10px rgba(0,255,136,0.2); }
+
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: blink 2s infinite; transition: background 0.3s, box-shadow 0.3s; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .teach-mode-indicator { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--amber), var(--red), var(--amber), transparent); background-size: 200% 100%; animation: teach-sweep 1.5s linear infinite; z-index: 100; display: none; }
+        .teach-mode-indicator.active { display: block; }
+        @keyframes teach-sweep { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+
+        .play-progress { height: 2px; background: rgba(0,255,136,0.15); border-radius: 1px; overflow: hidden; margin-top: 4px; }
+        .play-progress-inner { height: 100%; background: var(--green); box-shadow: 0 0 6px var(--green); width: 0%; transition: width 0.1s linear; }
+
+        .toggle-wrap { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .toggle-track { width: 34px; height: 18px; border-radius: 9px; background: rgba(0,242,255,0.1); border: 1px solid rgba(0,242,255,0.3); position: relative; transition: all 0.2s; cursor: pointer; }
+        .toggle-track.on { background: rgba(0,242,255,0.25); border-color: var(--cyan); box-shadow: var(--glow); }
+        .toggle-thumb { width: 12px; height: 12px; border-radius: 50%; background: rgba(0,242,255,0.4); position: absolute; top: 2px; left: 2px; transition: all 0.2s; }
+        .toggle-track.on .toggle-thumb { left: 18px; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+
+        .app-footer { display: flex; justify-content: space-between; align-items: center; font-size: 9px; opacity: 0.3; font-family: 'Orbitron', sans-serif; letter-spacing: 0.15em; border-top: 1px solid rgba(0,242,255,0.08); padding-top: 5px; flex-shrink: 0; }
+
+        @media (max-width: 1024px) {
+            body { touch-action: auto; user-select: auto; overflow: hidden; }
+            #app { height: 100dvh; }
+            .app-header { flex-direction: column; align-items: stretch; gap: 12px; padding: 10px 4px; }
+            .header-logo-tabs { flex-direction: column; align-items: flex-start; gap: 12px; width: 100%; }
+            .header-brand { width: 100%; justify-content: flex-start; }
+            .header-tabs { width: 100%; overflow-x: auto; padding-bottom: 4px; }
+            .header-tabs .tab-btn { flex: 1; text-align: center; white-space: nowrap; padding: 10px 14px; font-size: 11px; }
+            .header-controls { justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+            .header-stats { display: none !important; }
+            .tab-view { flex-direction: column; overflow-y: auto; overflow-x: hidden; padding-bottom: 20px; }
+            .col-left, .col-center, .col-right { width: 100%; flex: none; overflow: visible; height: auto; padding-right: 0; }
+            .flex-1-glass { flex: none; min-height: auto; }
+            .scrollable-list { min-height: 250px; max-height: 450px; flex: none; }
+            .servo-slider { margin: 8px 0; }
+            .servo-slider::-webkit-slider-thumb { width: 24px; height: 24px; }
+            .seq-item { padding: 12px 14px; }
+            .ctrl-btn { padding-top: 12px; padding-bottom: 12px; font-size: 10px; }
+            .d-pad { grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 6px; }
+            .d-pad-btn svg { width: 24px; height: 24px; }
+            .toggle-track { width: 44px; height: 24px; border-radius: 12px; }
+            .toggle-thumb { width: 16px; height: 16px; top: 3px; left: 3px; }
+            .toggle-track.on .toggle-thumb { left: 23px; }
+            .app-footer { flex-direction: column; gap: 6px; padding-bottom: 8px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="teach-mode-indicator" id="teachModeBar"></div>
+
+<!-- MAIN LAYOUT -->
+<div id="app">
+
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="header-logo-tabs">
+            <div class="header-brand">
+                <button class="ctrl-btn" style="padding: 6px 10px; font-size: 10px; height: 100%; margin-right: 4px;" onclick="window.history.back()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 4px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    BACK
+                </button>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="status-dot"></div>
+                    <h1 class="orbitron" style="font-size:18px;font-weight:900;letter-spacing:0.1em;">NOVA <span style="color:#fff;">CONTROL</span></h1>
+                </div>
+            </div>
+            <div class="header-tabs">
+                <button class="tab-btn active" id="tabTeach" onclick="setTab('teach')">TEACH & TRAIN</button>
+                <button class="tab-btn" id="tabSequence" onclick="setTab('sequence')">SEQUENCES</button>
+            </div>
+        </div>
+        
+        <div class="header-controls">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span class="orbitron" style="font-size:9px;color:var(--amber);letter-spacing:0.1em;">TEACH MODE</span>
+                <div class="toggle-track" id="teachToggle" onclick="toggleTeachMode()">
+                    <div class="toggle-thumb"></div>
+                </div>
+            </div>
+            <button class="ctrl-btn" style="padding:6px 14px;font-size:9px;" onclick="goHome()" title="Reset servos to home position">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                HOME
+            </button>
+            <button class="ctrl-btn danger" style="padding:6px 14px;font-size:9px;" onclick="emergencyStop()">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                E-STOP
+            </button>
+            <div class="header-stats" style="display:flex; align-items:center; gap:12px;">
+                <div style="text-align:right;">
+                    <div style="font-size:9px;opacity:0.4;font-family:'Orbitron',sans-serif;">LATENCY</div>
+                    <div id="latency" style="font-size:13px;font-family:'Fira Code',monospace;color:#fff;">--ms</div>
+                </div>
+                
+                <div style="text-align:right; border-left:1px solid rgba(0,242,255,0.2); padding-left:12px; cursor:pointer;" onclick="manualRetryIp()" title="Click to Retry network discovery">
+                    <div style="font-size:9px;opacity:0.4;font-family:'Orbitron',sans-serif;">CONNECTION</div>
+                    <div id="robotMode" style="font-size:11px;font-family:'Orbitron',sans-serif;color:var(--amber);font-weight:bold; transition:all 0.2s;">CONNECTING...</div>
+                </div>
+
+                <div id="clock" style="font-family:'Orbitron',sans-serif;font-size:11px;opacity:0.5; border-left:1px solid rgba(0,242,255,0.2); padding-left:12px;"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- TAB: TEACH & TRAIN -->
+    <div id="viewTeach" class="tab-view" style="display:flex;">
+        
+        <!-- LEFT COLUMN: Controls during teach mode -->
+        <div class="col-left">
+            <!-- Teach Status Panel -->
+            <div class="glass glass-bright" style="padding:12px;flex-shrink:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <div class="orbitron" style="font-size:10px;color:#fff;letter-spacing:0.1em;">TEACH CONTROLS</div>
+                    <div id="teachStatusDot" style="display:flex;align-items:center;gap:5px;">
+                        <div style="width:7px;height:7px;border-radius:50%;background:rgba(255,170,0,0.3);border:1px solid rgba(255,170,0,0.4);"></div>
+                        <span class="orbitron" style="font-size:8px;color:rgba(255,170,0,0.6);">STANDBY</span>
+                    </div>
+                </div>
+
+                <button id="teachModeMainBtn" class="ctrl-btn amber-btn" style="width:100%;padding:12px;font-size:11px;margin-bottom:10px;" onclick="toggleTeachMode()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                    START RECORDING
+                </button>
+
+                <div style="font-size:10px;opacity:0.5;text-align:center;margin-bottom:10px;">Use controls to record sequence steps. Sliders automatically record movement continuously.</div>
+
+                <div style="display:flex;justify-content:center;align-items:center;gap:10px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:9px;opacity:0.4;font-family:'Orbitron',sans-serif;">SESSION TIME</div>
+                        <div id="teachTimer" class="fira" style="font-size:22px;color:var(--amber);">00:00</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:9px;opacity:0.4;font-family:'Orbitron',sans-serif;">COMMANDS</div>
+                        <div id="teachCmdCount" class="fira" style="font-size:22px;color:var(--cyan);">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Movement D-Pad for Record -->
+            <div class="glass" style="padding:12px;flex-shrink:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div class="orbitron" style="font-size:9px;opacity:0.6;letter-spacing:0.1em;">RECORD MOVEMENT</div>
+                    <button id="turnSpeedBtn" class="ctrl-btn" style="padding:4px 8px;font-size:8px;" onclick="toggleTurnSpeed()">TURN SPD: LOW</button>
+                </div>
+                <div style="display:flex;justify-content:center;">
+                    <div class="d-pad">
+                        <div></div>
+                        <button class="ctrl-btn hold-btn d-pad-btn" id="trec-fwd" onmousedown="startRecordCmd('MOVE','FORWARD')" onmouseup="stopRecordCmd()" ontouchstart="startRecordCmd('MOVE','FORWARD')" ontouchend="stopRecordCmd()"><div class="hold-btn-fill" id="fill-trec-fwd"></div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <div></div>
+                        <button class="ctrl-btn hold-btn d-pad-btn" id="trec-left" onmousedown="startRecordCmd('MOVE','LEFT')" onmouseup="stopRecordCmd()" ontouchstart="startRecordCmd('MOVE','LEFT')" ontouchend="stopRecordCmd()"><div class="hold-btn-fill" id="fill-trec-left"></div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <button class="ctrl-btn hold-btn d-pad-btn" id="trec-stop" onmousedown="startRecordCmd('MOVE','STOP')" onmouseup="stopRecordCmd()" ontouchstart="startRecordCmd('MOVE','STOP')" ontouchend="stopRecordCmd()"><div class="hold-btn-fill" id="fill-trec-stop"></div>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+                        </button>
+                        <button class="ctrl-btn hold-btn d-pad-btn" id="trec-right" onmousedown="startRecordCmd('MOVE','RIGHT')" onmouseup="stopRecordCmd()" ontouchstart="startRecordCmd('MOVE','RIGHT')" ontouchend="stopRecordCmd()"><div class="hold-btn-fill" id="fill-trec-right"></div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                        <div></div>
+                        <button class="ctrl-btn hold-btn d-pad-btn" id="trec-bwd" onmousedown="startRecordCmd('MOVE','BACKWARD')" onmouseup="stopRecordCmd()" ontouchstart="startRecordCmd('MOVE','BACKWARD')" ontouchend="stopRecordCmd()"><div class="hold-btn-fill" id="fill-trec-bwd"></div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Joint Sliders for Record (Bounded to correct limits) -->
+            <div class="glass" style="padding:12px;flex-shrink:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                    <div class="orbitron" style="font-size:9px;opacity:0.6;letter-spacing:0.1em;">RECORD JOINTS</div>
+                    <div style="display:flex; gap:4px;">
+                        <button class="ctrl-btn" style="padding:4px 8px;font-size:8px;" onclick="addWaitCmd()">+1s WAIT</button>
+                        <button class="ctrl-btn success" style="padding:4px 8px;font-size:8px;font-weight:bold;" onclick="recordPoseCmd()">REC ALL (POSE)</button>
+                    </div>
+                </div>
+                
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:4px;opacity:0.8;"><span>L. SHOULDER</span><span id="t-lshoulder-val">80°</span></div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="range" id="teach-slider-lshoulder" class="servo-slider green" min="20" max="80" value="80" 
+                                oninput="updateTeachSliderLive('L.SHOULDER', this.value)"
+                                onmousedown="startTeachSlider('L.SHOULDER')" ontouchstart="startTeachSlider('L.SHOULDER')"
+                                onmouseup="stopTeachSlider('L.SHOULDER', this.value)" ontouchend="stopTeachSlider('L.SHOULDER', this.value)">
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:4px;opacity:0.8;"><span>R. SHOULDER</span><span id="t-rshoulder-val">90°</span></div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="range" id="teach-slider-rshoulder" class="servo-slider red-s" min="90" max="145" value="90" 
+                                oninput="updateTeachSliderLive('R.SHOULDER', this.value)"
+                                onmousedown="startTeachSlider('R.SHOULDER')" ontouchstart="startTeachSlider('R.SHOULDER')"
+                                onmouseup="stopTeachSlider('R.SHOULDER', this.value)" ontouchend="stopTeachSlider('R.SHOULDER', this.value)">
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:4px;opacity:0.8;"><span>L. ELBOW</span><span id="t-lelbow-val">110°</span></div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="range" id="teach-slider-lelbow" class="servo-slider green" min="110" max="135" value="110" 
+                                oninput="updateTeachSliderLive('L.ELBOW', this.value)"
+                                onmousedown="startTeachSlider('L.ELBOW')" ontouchstart="startTeachSlider('L.ELBOW')"
+                                onmouseup="stopTeachSlider('L.ELBOW', this.value)" ontouchend="stopTeachSlider('L.ELBOW', this.value)">
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:4px;opacity:0.8;"><span>R. ELBOW</span><span id="t-relbow-val">75°</span></div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="range" id="teach-slider-relbow" class="servo-slider red-s" min="50" max="75" value="75" 
+                                oninput="updateTeachSliderLive('R.ELBOW', this.value)"
+                                onmousedown="startTeachSlider('R.ELBOW')" ontouchstart="startTeachSlider('R.ELBOW')"
+                                onmouseup="stopTeachSlider('R.ELBOW', this.value)" ontouchend="stopTeachSlider('R.ELBOW', this.value)">
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:4px;opacity:0.8;"><span>NECK</span><span id="t-neck-val">85°</span></div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="range" id="teach-slider-neck" class="servo-slider amber" min="35" max="150" value="85" 
+                                oninput="updateTeachSliderLive('NECK', this.value)"
+                                onmousedown="startTeachSlider('NECK')" ontouchstart="startTeachSlider('NECK')"
+                                onmouseup="stopTeachSlider('NECK', this.value)" ontouchend="stopTeachSlider('NECK', this.value)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER COLUMN: Recorded Commands Timeline -->
+        <div class="col-center">
+            <div class="glass flex-1-glass" style="padding:14px; gap:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                    <div class="orbitron" style="font-size:10px;color:#fff;letter-spacing:0.1em;">RECORDED COMMANDS</div>
+                    <div style="display:flex;gap:6px;">
+                        <button class="ctrl-btn" style="padding:4px 10px;font-size:8px;" onclick="clearRecording()">CLEAR</button>
+                        <button class="ctrl-btn success" style="padding:4px 10px;font-size:8px;" onclick="playRecording()">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            TEST PLAY
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Timeline / Command list -->
+                <div id="recordedCmds" class="scrollable-list">
+                    <div style="text-align:center;padding:20px;opacity:0.3;font-size:12px;">No commands recorded yet.<br>Enable Teach Mode and record steps.</div>
+                </div>
+
+                <!-- Save Sequence Panel -->
+                <div style="border-top:1px solid rgba(0,242,255,0.1);padding-top:12px;flex-shrink:0;">
+                    <div class="orbitron" style="font-size:9px;opacity:0.6;margin-bottom:8px;letter-spacing:0.1em;">SAVE AS SEQUENCE</div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="seqNameInput" placeholder="Enter sequence name..."
+                            style="flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(0,242,255,0.2);border-radius:4px;padding:7px 12px;color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:11px;outline:none;"
+                            onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='rgba(0,242,255,0.2)'">
+                        <button class="ctrl-btn success" style="padding:7px 16px;font-size:10px;" onclick="saveSequence()">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            SAVE
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Saved Sequences quick access -->
+        <div class="col-right">
+            <div class="glass flex-1-glass" style="padding:12px; gap:8px;">
+                <div class="orbitron" style="font-size:10px;color:#fff;letter-spacing:0.1em;flex-shrink:0;">SAVED SEQUENCES</div>
+                <div id="teachSeqList" class="scrollable-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: SEQUENCES -->
+    <div id="viewSequence" class="tab-view" style="display:none;">
+        
+        <!-- LEFT COLUMN: Sequence List -->
+        <div class="col-left">
+            <div class="glass flex-1-glass" style="padding:14px; gap:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                    <div class="orbitron" style="font-size:10px;color:#fff;letter-spacing:0.1em;">MY SEQUENCES</div>
+                    <span id="seqCount" class="fira" style="font-size:10px;opacity:0.4;">0 saved</span>
+                </div>
+                <div id="seqListMain" class="scrollable-list">
+                    <div style="text-align:center;padding:20px;opacity:0.3;font-size:12px;">No sequences saved yet.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER COLUMN: Sequence Detail / Player -->
+        <div class="col-center">
+            <div class="glass flex-1-glass" style="padding:14px; gap:10px;">
+                <div id="seqDetailEmpty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0.3;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <div style="margin-top:12px;font-size:13px;">Select a sequence to view</div>
+                </div>
+                <div id="seqDetailView" style="display:none;flex-direction:column;flex:1;gap:10px;overflow:hidden;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0; flex-wrap:wrap; gap:8px;">
+                        <div>
+                            <div class="orbitron" style="font-size:14px;color:#fff;" id="seqDetailName">—</div>
+                            <div style="font-size:10px;opacity:0.4;" id="seqDetailMeta">0 commands · 0.0s total</div>
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="ctrl-btn danger" style="padding:5px 10px;font-size:9px;" onclick="deleteSelectedSequence()">DELETE</button>
+                            <button class="ctrl-btn success" style="padding:5px 14px;font-size:9px;" id="playSeqBtn" onclick="playSelectedSequence()">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                PLAY
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Play progress -->
+                    <div id="playProgressWrap" style="display:none;flex-shrink:0;">
+                        <div style="display:flex;justify-content:space-between;font-size:9px;opacity:0.5;margin-bottom:4px;">
+                            <span id="playProgressLabel">Playing...</span>
+                            <span id="playProgressPct">0%</span>
+                        </div>
+                        <div class="play-progress"><div class="play-progress-inner" id="playProgressBar"></div></div>
+                    </div>
+                    <!-- Command list -->
+                    <div id="seqDetailCmds" class="scrollable-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Playback controls + Loop -->
+        <div class="col-right">
+            <div class="glass flex-1-glass" style="padding:14px; gap:12px;">
+                <div class="orbitron" style="font-size:10px;color:#fff;letter-spacing:0.1em;">PLAYBACK</div>
+
+                <div>
+                    <div style="font-size:10px;opacity:0.6;margin-bottom:6px;">SPEED MULTIPLIER</div>
+                    <input type="range" class="servo-slider" min="0.25" max="3" step="0.25" value="1" id="playbackSpeed"
+                        oninput="document.getElementById('playbackSpeedVal').textContent=this.value+'x'">
+                    <div style="display:flex;justify-content:space-between;font-size:9px;opacity:0.3;margin-top:2px;font-family:'Fira Code',monospace;">
+                        <span>0.25x</span><span id="playbackSpeedVal">1x</span><span>3x</span>
+                    </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div class="toggle-wrap" onclick="toggleLoopPlay()">
+                        <div class="toggle-track" id="loopToggle"><div class="toggle-thumb"></div></div>
+                        <span style="font-size:11px;">LOOP</span>
+                    </div>
+                    <div class="toggle-wrap" onclick="toggleRepeatPlay()">
+                        <div class="toggle-track" id="repeatToggle"><div class="toggle-thumb"></div></div>
+                        <span style="font-size:11px;">REPEAT ×3</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px;">
+                    <button class="ctrl-btn" style="padding:8px;font-size:9px;" onclick="stopPlayback()">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><rect x="6" y="6" width="12" height="12"/></svg>
+                        STOP
+                    </button>
+                    <button class="ctrl-btn danger" style="padding:8px;font-size:9px;" onclick="emergencyStop()">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        E-STOP
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+        <span>NOVA OS v4.2.0 — WEBSOCKET ROBOT CONTROL</span>
+        <span>© ROBOMIRACLE TECHNOLOGIES 2024</span>
+        <span id="footerClock">00:00:00</span>
+    </footer>
+</div>
+
+<!-- E-STOP Modal -->
+<div id="estopModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
+    <div class="glass" style="padding:32px;text-align:center;max-width:360px;border-color:rgba(255,51,68,0.5);box-shadow:0 0 40px rgba(255,51,68,0.3);">
+        <div style="color:var(--red);font-size:32px;font-family:'Orbitron',sans-serif;font-weight:900;margin-bottom:8px;animation:blink 0.5s infinite;">E-STOP</div>
+        <div style="color:#fff;margin-bottom:20px;font-size:13px;">Emergency stop activated.<br>All motors halted.</div>
+        <button class="ctrl-btn" style="padding:10px 24px;font-size:11px;" onclick="dismissEstop()">DISMISS &amp; RESUME</button>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:rgba(0,10,20,0.95);border:1px solid rgba(0,242,255,0.3);border-radius:6px;padding:8px 18px;font-family:'Orbitron',sans-serif;font-size:10px;color:var(--cyan);box-shadow:var(--glow);transition:transform 0.3s ease;z-index:500;pointer-events:none;"></div>
+
+<script>
+// =====================================================================
+// WEBSOCKET COMMUNICATION TO ESP32
+// =====================================================================
+let CURRENT_ESP_IP = "nova-robot.local";
+
+// PRE-FETCH SAVED IP FROM NATIVE STORAGE
+if (window.AndroidLauncher && typeof window.AndroidLauncher.getSavedRobotIP === 'function') {
+    CURRENT_ESP_IP = window.AndroidLauncher.getSavedRobotIP();
+}
+
+let ws = null;
+let wsConnected = false;
+let currentLatency = "0ms";
+
+function connectWebSocket(ip) {
+    if (ws) {
+        ws.onclose = null; // Prevent overlapping loops
+        ws.close();
+    }
+    
+    try {
+        ws = new WebSocket('ws://' + ip + '/ws');
+        
+        ws.onopen = () => {
+            wsConnected = true;
+            showToast('WebSocket Connected', 'var(--green)');
+            let dot = document.querySelector('.status-dot');
+            if(dot) { dot.style.background = "var(--green)"; dot.style.boxShadow = "0 0 8px var(--green)"; }
+            log('WEBSOCKET CONNECTED: ' + ip);
+        };
+        
+        ws.onmessage = (e) => {
+            // Reply to ping to keep the connection alive
+            if (e.data === 'ping') {
+                ws.send(JSON.stringify({ cmd: 'pong' }));
+            }
+        };
+        
+        ws.onclose = () => {
+            wsConnected = false;
+            let dot = document.querySelector('.status-dot');
+            if(dot) { dot.style.background = "var(--red)"; dot.style.boxShadow = "0 0 8px var(--red)"; }
+            log('WEBSOCKET DISCONNECTED');
+            ws = null;
+        };
+        
+        ws.onerror = (e) => {
+            wsConnected = false;
+            ws = null;
+        };
+    } catch (e) {
+        console.error("WS Init Error:", e);
+    }
+}
+
+function sendWsCommand(obj) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+    }
+}
+
+function sendWsMove(dirChar) {
+    let d = String(dirChar).toUpperCase();
+    let cmdStr = 'stop';
+    
+    if(d === 'F' || d === 'FORWARD') cmdStr = 'forward';
+    else if(d === 'B' || d === 'BACKWARD') cmdStr = 'backward';
+    else if(d === 'L' || d === 'LEFT') cmdStr = 'left';
+    else if(d === 'R' || d === 'RIGHT') cmdStr = 'right';
+    else if(d === 'S' || d === 'STOP') cmdStr = 'stop';
+    
+    sendWsCommand({cmd: cmdStr});
+}
+
+function sendWsServo(s, v) {
+    sendWsCommand({cmd: 'servo', s: parseInt(s), v: parseInt(v)});
+}
+
+async function findRobotIpInBackground() {
+    // RE-SYNC IP FROM NATIVE BRIDGE
+    if (window.AndroidLauncher && typeof window.AndroidLauncher.getSavedRobotIP === 'function') {
+        CURRENT_ESP_IP = window.AndroidLauncher.getSavedRobotIP();
+    }
+    
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1000);
+
+        let t0 = performance.now();
+        let res = await fetch(`http://${CURRENT_ESP_IP}/status`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        let data = await res.json();
+        let t1 = performance.now();
+        currentLatency = Math.round(t1 - t0) + "ms";
+        
+        // Use exact check against "ok"
+        if (data && (data.status === "ok" || data.status === "connection_successful")) {
+            // Update known IP if it changed
+            if (data.ip_address && data.ip_address !== CURRENT_ESP_IP && window.AndroidLauncher && typeof window.AndroidLauncher.saveRobotIP === 'function') {
+                window.AndroidLauncher.saveRobotIP(data.ip_address);
+                CURRENT_ESP_IP = data.ip_address;
+            }
+            
+            // Reconnect / Connect WebSocket if needed
+            if (!ws || ws.readyState === WebSocket.CLOSED) {
+                connectWebSocket(CURRENT_ESP_IP);
+            } else if (ws.url !== `ws://${CURRENT_ESP_IP}/ws` && ws.readyState !== WebSocket.CONNECTING) {
+                connectWebSocket(CURRENT_ESP_IP);
+            }
+            
+            // Update UI
+            let modeStr = (data.wifi_mode === "station") ? "HOME WIFI" : "AP MODE";
+            let modeEl = document.getElementById('robotMode');
+            if (modeEl) {
+                modeEl.innerText = modeStr + (wsConnected ? " (WS)" : "");
+                modeEl.style.color = (data.wifi_mode === "station") ? "var(--green)" : "var(--amber)";
+                
+                // If not WS connected, show amber to indicate HTTP-only fallback/scan state
+                if(!wsConnected) {
+                    document.querySelector('.status-dot').style.background = "var(--amber)";
+                    document.querySelector('.status-dot').style.boxShadow = "0 0 8px var(--amber)";
+                }
+            }
+        }
+    } catch (e) {
+        // Retrying silently on next tick
+    }
+}
+let bgScanInterval = setInterval(findRobotIpInBackground, 2000);
+
+function manualRetryIp() {
+    let modeEl = document.getElementById('robotMode');
+    if(modeEl) {
+        modeEl.innerText = "SCANNING...";
+        modeEl.style.color = "var(--cyan)";
+    }
+    showToast("Re-scanning Network for NOVA...");
+    findRobotIpInBackground();
+}
+
+// SPEED HANDLING
+let speedTimeout = null;
+
+function setExactSpeed(espSpeed) {
+    if (speedTimeout) clearTimeout(speedTimeout); // cancel pending sliders
+    sendWsCommand({cmd: 'speed', v: espSpeed});
+}
+
+// =====================================================================
+// STATE & BOUNDS
+// =====================================================================
+const state = {
+    teachMode: false,
+    isRecording: false,
+    currentRecCmd: null,
+    recordStartTime: null,
+    teachTimerInterval: null,
+    teachSeconds: 0,
+    recordedCommands: [],
+    savedSequences: JSON.parse(localStorage.getItem('novaSequences') || '[]'),
+    selectedSequence: null,
+    isPlaying: false,
+    playbackTimer: null,
+    loopPlay: false,
+    repeatPlay: false,
+    turnSpeed: 63,
+    turnSpeedHigh: false
+};
+
+function toggleTurnSpeed() {
+    state.turnSpeedHigh = !state.turnSpeedHigh;
+    state.turnSpeed = state.turnSpeedHigh ? 180 : 63;
+    
+    const btn = document.getElementById('turnSpeedBtn');
+    if (state.turnSpeedHigh) {
+        btn.textContent = 'TURN SPD: HIGH';
+        btn.classList.add('amber-btn');
+    } else {
+        btn.textContent = 'TURN SPD: LOW';
+        btn.classList.remove('amber-btn');
+    }
+    showToast(`Turn speed set to ${state.turnSpeedHigh ? 'HIGH' : 'LOW'}`, 'var(--cyan)');
+}
+
+const teachJointVals = {
+    'L.SHOULDER': 80, 'R.SHOULDER': 90, 'L.ELBOW': 110, 'R.ELBOW': 75, 'NECK': 85
+};
+
+// =====================================================================
+// UTILITIES
+// =====================================================================
+function showToast(msg, color='var(--cyan)') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.borderColor = color;
+    t.style.color = color;
+    t.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(t._timeout);
+    t._timeout = setTimeout(() => { t.style.transform = 'translateX(-50%) translateY(60px)'; }, 2200);
+}
+
+function log(msg) { console.log(`[${new Date().toTimeString().split(' ')[0]}] ${msg}`); }
+function formatDuration(ms) { return (ms / 1000).toFixed(2) + 's'; }
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+setInterval(() => {
+    const t = new Date().toTimeString().split(' ')[0];
+    document.getElementById('clock').textContent = t;
+    document.getElementById('footerClock').textContent = t;
+    document.getElementById('latency').textContent = currentLatency;
+}, 1000);
+
+function setTab(tab) {
+    ['teach','sequence'].forEach(t => {
+        document.getElementById('view' + t.charAt(0).toUpperCase() + t.slice(1)).style.display = 'none';
+        document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.remove('active');
+    });
+    document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'flex';
+    document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+    if (tab === 'sequence') renderSequenceList();
+}
+
+let moveIntervals = {};
+let turnTimeout = null;
+
+function stopAllMovement() {
+    moveIntervals = {};
+    if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null; }
+    sendWsMove('S');
+    log('MOVEMENT HALTED');
+}
+
+// =====================================================================
+// TEACH MODE
+// =====================================================================
+function toggleTeachMode() {
+    state.teachMode = !state.teachMode;
+    const toggle = document.getElementById('teachToggle');
+    const bar = document.getElementById('teachModeBar');
+    const mainBtn = document.getElementById('teachModeMainBtn');
+    const statusDot = document.getElementById('teachStatusDot');
+
+    if (state.teachMode) {
+        toggle.classList.add('on');
+        bar.classList.add('active');
+        mainBtn.textContent = '⏹ STOP RECORDING';
+        mainBtn.classList.add('active-state');
+        statusDot.innerHTML = '<div style="width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);animation:blink 0.5s infinite;"></div><span class="orbitron" style="font-size:8px;color:var(--red);">RECORDING</span>';
+        
+        state.teachSeconds = 0;
+        state.teachTimerInterval = setInterval(() => {
+            state.teachSeconds++;
+            const m = String(Math.floor(state.teachSeconds / 60)).padStart(2,'0');
+            const s = String(state.teachSeconds % 60).padStart(2,'0');
+            document.getElementById('teachTimer').textContent = m + ':' + s;
+        }, 1000);
+        showToast('TEACH MODE ACTIVE — Adjust and record', 'var(--amber)');
+        log('TEACH MODE STARTED');
+    } else {
+        toggle.classList.remove('on');
+        bar.classList.remove('active');
+        mainBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>START RECORDING';
+        mainBtn.classList.remove('active-state');
+        statusDot.innerHTML = '<div style="width:7px;height:7px;border-radius:50%;background:rgba(255,170,0,0.3);border:1px solid rgba(255,170,0,0.4);"></div><span class="orbitron" style="font-size:8px;color:rgba(255,170,0,0.6);">STANDBY</span>';
+        clearInterval(state.teachTimerInterval);
+        stopRecordCmd();
+        log('TEACH MODE STOPPED');
+        showToast('Teach mode stopped', 'var(--cyan)');
+    }
+}
+
+// ---------------- AUTOMATIC DELAY CALCULATION ----------------
+function injectAutoWait(now) {
+    if (state.recordedCommands.length > 0) {
+        const lastCmd = state.recordedCommands[state.recordedCommands.length - 1];
+        // Only calculate wait if the last command wasn't already a WAIT
+        if (lastCmd.joint !== 'WAIT') {
+            const idleMs = now - lastCmd.timestamp;
+            // Only inject a wait if the pause was significant (>250ms) to avoid micro-stutters
+            if (idleMs > 250) {
+                state.recordedCommands.push({
+                    joint: 'WAIT',
+                    action: (idleMs / 1000).toFixed(1) + 's',
+                    duration: idleMs,
+                    timestamp: now // This wait ends exactly when the new command begins
+                });
+                log(`AUTO WAIT INJECTED: ${idleMs}ms`);
+            }
+        }
+    }
+}
+
+// ---------------- RECORDING MOVEMENT ----------------
+function startRecordCmd(joint, action) {
+    if (!state.teachMode) { showToast('Enable Teach Mode first!', 'var(--red)'); return; }
+    if (state.currentRecCmd) stopRecordCmd();
+    
+    state.recordStartTime = Date.now();
+    injectAutoWait(state.recordStartTime);
+    
+    state.currentRecCmd = { joint, action };
+    
+    let actLower = action.toLowerCase();
+    let currentSpeed = (actLower === 'left' || actLower === 'right') ? state.turnSpeed : 255;
+    state.currentRecCmd.motorSpeed = currentSpeed;
+    
+    if (actLower === 'left' || actLower === 'right') {
+        sendWsMove('S');
+        if (turnTimeout) clearTimeout(turnTimeout);
+        turnTimeout = setTimeout(() => {
+            if (state.currentRecCmd && state.currentRecCmd.action === action) {
+                setExactSpeed(currentSpeed);
+                sendWsMove(action);
+            }
+        }, 150);
+    } else if (actLower === 'forward' || actLower === 'backward') {
+        if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null; }
+        setExactSpeed(currentSpeed);
+        sendWsMove(action);
+    } else {
+        sendWsMove(action);
+    }
+    
+    log(`REC START: ${joint} → ${action} @${currentSpeed}`);
+}
+
+function stopRecordCmd() {
+    if (!state.currentRecCmd || !state.recordStartTime) return;
+    sendWsMove('S'); 
+    if (turnTimeout) { clearTimeout(turnTimeout); turnTimeout = null; }
+    const duration = Date.now() - state.recordStartTime;
+    const cmd = { joint: state.currentRecCmd.joint, action: state.currentRecCmd.action, duration: duration, timestamp: Date.now(), motorSpeed: state.currentRecCmd.motorSpeed };
+    state.recordedCommands.push(cmd);
+    document.getElementById('teachCmdCount').textContent = state.recordedCommands.length;
+    renderRecordedCommands();
+    log(`REC STOP: ${cmd.joint} → ${cmd.action} [${formatDuration(duration)}]`);
+    state.currentRecCmd = null;
+    state.recordStartTime = null;
+}
+
+// ---------------- CONTINUOUS SERVO RECORDING IN TEACH MODE ----------------
+let activeTeachSlider = null;
+let sliderStartTime = null;
+let teachLastRecordTime = {};
+
+function startTeachSlider(joint) {
+    if (!state.teachMode) return;
+    
+    const now = Date.now();
+    injectAutoWait(now);
+    
+    activeTeachSlider = joint;
+    sliderStartTime = now;
+    teachLastRecordTime[joint] = now;
+}
+
+function updateTeachSliderLive(joint, val) {
+    teachJointVals[joint] = val;
+    const idMap = { 'L.SHOULDER': 't-lshoulder-val', 'R.SHOULDER': 't-rshoulder-val', 'L.ELBOW': 't-lelbow-val', 'R.ELBOW': 't-relbow-val', 'NECK': 't-neck-val' };
+    document.getElementById(idMap[joint]).textContent = val + '°';
+    
+    // Transmit instantly to hardware
+    const vInt = parseInt(val);
+    const servoMap = { 'L.SHOULDER': 4, 'R.SHOULDER': 2, 'NECK': 3, 'L.ELBOW': 5, 'R.ELBOW': 1 }; 
+    if (servoMap[joint]) sendWsServo(servoMap[joint], vInt);
+
+    // Smoothly record continuous path during drag
+    if (state.teachMode && activeTeachSlider === joint) {
+        const now = Date.now();
+        const duration = now - teachLastRecordTime[joint];
+        
+        // Record roughly every 120ms to trace a smooth path without flooding the sequence array
+        if (duration >= 120) {
+            state.recordedCommands.push({ joint: joint, action: val + '°', duration: duration, timestamp: now });
+            document.getElementById('teachCmdCount').textContent = state.recordedCommands.length;
+            teachLastRecordTime[joint] = now;
+        }
+    }
+}
+
+function stopTeachSlider(joint, val) {
+    if (!state.teachMode || activeTeachSlider !== joint || !sliderStartTime) return;
+    
+    const now = Date.now();
+    const duration = now - (teachLastRecordTime[joint] || sliderStartTime);
+
+    // Record the final point
+    state.recordedCommands.push({ joint: joint, action: val + '°', duration: Math.max(50, duration), timestamp: now });
+    document.getElementById('teachCmdCount').textContent = state.recordedCommands.length;
+    renderRecordedCommands(); // Render DOM updates only at the end to prevent lag while dragging
+    
+    showToast(`Recorded ${joint} path`, 'var(--green)');
+    log(`REC SERVO PATH END: ${joint} → ${val}°`);
+
+    activeTeachSlider = null;
+    sliderStartTime = null;
+}
+
+function recordPoseCmd() {
+    if (!state.teachMode) { showToast('Enable Teach Mode first!', 'var(--red)'); return; }
+    
+    const now = Date.now();
+    injectAutoWait(now);
+    
+    const cmd = {
+        joint: 'POSE', action: 'ALL JOINTS', duration: 1000, timestamp: now + 1000,
+        vals: { ...teachJointVals }
+    };
+    state.recordedCommands.push(cmd);
+    document.getElementById('teachCmdCount').textContent = state.recordedCommands.length;
+    renderRecordedCommands();
+    showToast('Recorded full pose', 'var(--green)');
+    log('REC POSE');
+}
+
+function addWaitCmd() {
+    if (!state.teachMode) { showToast('Enable Teach Mode first!', 'var(--red)'); return; }
+    state.recordedCommands.push({ joint: 'WAIT', action: '1.0s', duration: 1000, timestamp: Date.now() });
+    document.getElementById('teachCmdCount').textContent = state.recordedCommands.length;
+    renderRecordedCommands();
+    showToast('Added 1s wait', 'var(--cyan)');
+}
+
+// ---------------- UI TIMELINE UPDATES ----------------
+function renderRecordedCommands() {
+    const container = document.getElementById('recordedCmds');
+    container.innerHTML = '';
+    if (!state.recordedCommands.length) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;opacity:0.3;font-size:12px;">No commands recorded yet.<br>Enable Teach Mode and record steps.</div>';
+        return;
+    }
+    
+    // Quick rendering using fragment
+    const frag = document.createDocumentFragment();
+    state.recordedCommands.forEach((cmd, i) => {
+        const el = document.createElement('div');
+        el.className = 'seq-item';
+        el.style.cssText = 'cursor:default;';
+        el.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="fira" style="font-size:9px;opacity:0.4;min-width:20px;">${String(i+1).padStart(2,'0')}</span>
+                <div>
+                    <div style="font-size:11px;color:var(--cyan);font-family:'Orbitron',sans-serif;letter-spacing:0.05em;">${cmd.joint}</div>
+                    <div style="font-size:10px;opacity:0.6;">${cmd.action}</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span class="fira" style="font-size:10px;color:var(--amber);">${formatDuration(cmd.duration)}</span>
+                <button class="ctrl-btn danger" style="padding:4px 8px;font-size:8px;" onclick="removeCmd(${i})">✕</button>
+            </div>
+        `;
+        frag.appendChild(el);
+    });
+    container.appendChild(frag);
+    // Scroll to bottom automatically
+    container.scrollTop = container.scrollHeight;
+}
+
+function removeCmd(idx) {
+    state.recordedCommands.splice(idx, 1);
+    document.getElementById('teachCmdCount').textContent = state.recordedCommands.length;
+    renderRecordedCommands();
+}
+
+function clearRecording() {
+    state.recordedCommands = [];
+    document.getElementById('teachCmdCount').textContent = '0';
+    renderRecordedCommands();
+    showToast('Recording cleared');
+}
+
+function playRecording() {
+    if (!state.recordedCommands.length) { showToast('No commands to play', 'var(--red)'); return; }
+    showToast('Playing recorded sequence...', 'var(--green)');
+    log('TEST PLAY: Running ' + state.recordedCommands.length + ' commands');
+    executeCommandList(state.recordedCommands, 1, () => { log('TEST PLAY: Complete'); });
+}
+
+// =====================================================================
+// SAVE / LOAD SEQUENCES
+// =====================================================================
+function saveSequence() {
+    const name = document.getElementById('seqNameInput').value.trim();
+    if (!name) { showToast('Enter a sequence name', 'var(--red)'); return; }
+    if (!state.recordedCommands.length) { showToast('No commands to save', 'var(--red)'); return; }
+
+    const seq = { id: Date.now(), name: name, commands: [...state.recordedCommands], createdAt: new Date().toISOString(), totalDuration: state.recordedCommands.reduce((a, c) => a + c.duration, 0) };
+    state.savedSequences.push(seq);
+    localStorage.setItem('novaSequences', JSON.stringify(state.savedSequences));
+    document.getElementById('seqNameInput').value = '';
+    renderTeachSeqList();
+    showToast(`Sequence "${name}" saved!`, 'var(--green)');
+    log(`SAVED: "${name}" — ${seq.commands.length} cmds`);
+}
+
+function renderTeachSeqList() {
+    const list = document.getElementById('teachSeqList');
+    list.innerHTML = '';
+    if (!state.savedSequences.length) {
+        list.innerHTML = '<div style="text-align:center;padding:16px;opacity:0.3;font-size:11px;">No sequences.</div>';
+        return;
+    }
+    state.savedSequences.forEach(seq => {
+        const el = document.createElement('div');
+        el.className = 'seq-item';
+        el.innerHTML = `
+            <div>
+                <div style="font-size:11px;font-family:'Orbitron',sans-serif;color:#fff;">${seq.name}</div>
+                <div style="font-size:9px;opacity:0.4;">${seq.commands.length} cmds · ${formatDuration(seq.totalDuration)}</div>
+            </div>
+            <button class="ctrl-btn success" style="padding:4px 10px;font-size:8px;" onclick="quickPlay(${seq.id})">▶</button>
+        `;
+        list.appendChild(el);
+    });
+}
+
+function renderSequenceList() {
+    const list = document.getElementById('seqListMain');
+    const count = document.getElementById('seqCount');
+    count.textContent = state.savedSequences.length + ' saved';
+    list.innerHTML = '';
+    if (!state.savedSequences.length) {
+        list.innerHTML = '<div style="text-align:center;padding:20px;opacity:0.3;font-size:12px;">No sequences saved yet.</div>';
+        return;
+    }
+    state.savedSequences.forEach(seq => {
+        const el = document.createElement('div');
+        el.className = 'seq-item';
+        if (state.selectedSequence?.id === seq.id) el.classList.add('playing');
+        el.onclick = () => selectSequence(seq.id);
+        el.innerHTML = `
+            <div>
+                <div style="font-size:12px;font-family:'Orbitron',sans-serif;color:#fff;">${seq.name}</div>
+                <div style="font-size:9px;opacity:0.4;">${seq.commands.length} commands · ${formatDuration(seq.totalDuration)}</div>
+            </div>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" opacity="0.4"><polyline points="9 18 15 12 9 6"/></svg>
+        `;
+        list.appendChild(el);
+    });
+}
+
+function selectSequence(id) {
+    state.selectedSequence = state.savedSequences.find(s => s.id === id);
+    if (!state.selectedSequence) return;
+    renderSequenceList();
+    document.getElementById('seqDetailEmpty').style.display = 'none';
+    document.getElementById('seqDetailView').style.display = 'flex';
+    document.getElementById('seqDetailName').textContent = state.selectedSequence.name;
+    document.getElementById('seqDetailMeta').textContent = `${state.selectedSequence.commands.length} commands · ${formatDuration(state.selectedSequence.totalDuration)} total`;
+
+    const cmds = document.getElementById('seqDetailCmds');
+    cmds.innerHTML = '';
+    state.selectedSequence.commands.forEach((cmd, i) => {
+        const el = document.createElement('div');
+        el.className = 'seq-item';
+        el.id = `seqcmd-${i}`;
+        el.style.cursor = 'default';
+        el.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="fira" style="font-size:9px;opacity:0.4;min-width:20px;">${String(i+1).padStart(2,'0')}</span>
+                <div>
+                    <div style="font-size:11px;color:var(--cyan);font-family:'Orbitron',sans-serif;">${cmd.joint}</div>
+                    <div style="font-size:10px;opacity:0.6;">${cmd.action}</div>
+                </div>
+            </div>
+            <span class="fira" style="font-size:10px;color:var(--amber);">${formatDuration(cmd.duration)}</span>
+        `;
+        cmds.appendChild(el);
+    });
+}
+
+function deleteSelectedSequence() {
+    if (!state.selectedSequence) return;
+    const name = state.selectedSequence.name;
+    state.savedSequences = state.savedSequences.filter(s => s.id !== state.selectedSequence.id);
+    localStorage.setItem('novaSequences', JSON.stringify(state.savedSequences));
+    state.selectedSequence = null;
+    document.getElementById('seqDetailEmpty').style.display = 'flex';
+    document.getElementById('seqDetailView').style.display = 'none';
+    renderSequenceList();
+    showToast(`"${name}" deleted`, 'var(--red)');
+}
+
+// =====================================================================
+// PLAYBACK ENGINE
+// =====================================================================
+function playSelectedSequence() {
+    if (!state.selectedSequence) return;
+    if (state.isPlaying) { stopPlayback(); return; }
+    const speed = parseFloat(document.getElementById('playbackSpeed').value);
+    const seq = state.selectedSequence;
+    log(`PLAY: "${seq.name}" at ${speed}x speed`);
+    showToast(`Playing "${seq.name}"...`, 'var(--green)');
+
+    document.getElementById('playProgressWrap').style.display = 'block';
+    document.getElementById('playSeqBtn').innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><rect x="6" y="6" width="12" height="12"/></svg>STOP`;
+    state.isPlaying = true;
+
+    const repeat = state.repeatPlay ? 3 : 1;
+    let rep = 0;
+
+    function runOnce() {
+        executeCommandList(seq.commands, speed, () => {
+            rep++;
+            if (rep < repeat || state.loopPlay) { runOnce(); } 
+            else {
+                stopPlayback();
+                log(`PLAY COMPLETE: "${seq.name}"`);
+                showToast('Playback complete', 'var(--green)');
+            }
+        });
+    }
+    runOnce();
+}
+
+function executeCommandList(cmds, speed, onComplete) {
+    let i = 0;
+    const totalDuration = cmds.reduce((a, c) => a + c.duration, 0);
+    let elapsed = 0;
+
+    function next() {
+        if (!state.isPlaying && onComplete !== undefined && speed !== 1) return;
+        if (i >= cmds.length) { sendWsMove('S'); if (onComplete) onComplete(); return; }
+        
+        const cmd = cmds[i];
+
+        document.querySelectorAll('.seq-item[id^="seqcmd-"]').forEach(el => el.style.borderColor = '');
+        const activeEl = document.getElementById(`seqcmd-${i}`);
+        if (activeEl) {
+            activeEl.style.borderColor = 'var(--green)';
+            activeEl.scrollIntoView({ block: 'nearest' });
+        }
+
+        log(`EXEC: ${cmd.joint} → ${cmd.action}`);
+
+        // --- WEBSOCKET EXECUTION ---
+        if (cmd.joint === 'MOVE') {
+            let actLower = cmd.action.toLowerCase();
+            let fallbackSpeed = (actLower === 'left' || actLower === 'right') ? 63 : 255;
+            let playSpeed = cmd.motorSpeed || fallbackSpeed;
+
+            if (actLower === 'left' || actLower === 'right') {
+                sendWsMove('S');
+                setTimeout(() => {
+                    if (state.isPlaying || speed === 1) {
+                        setExactSpeed(playSpeed);
+                        sendWsMove(cmd.action);
+                    }
+                }, 150);
+            } else if (actLower === 'forward' || actLower === 'backward') {
+                setExactSpeed(playSpeed);
+                sendWsMove(cmd.action);
+            } else {
+                sendWsMove(cmd.action);
+            }
+        } else if (cmd.joint === 'POSE') {
+            sendWsMove('S'); // Stop any driving before posing
+            sendWsServo(4, cmd.vals['L.SHOULDER']);
+            sendWsServo(2, cmd.vals['R.SHOULDER']);
+            sendWsServo(3, cmd.vals['NECK']);
+            sendWsServo(5, cmd.vals['L.ELBOW']);
+            sendWsServo(1, cmd.vals['R.ELBOW']);
+        } else if (cmd.joint === 'WAIT') {
+            sendWsMove('S'); // Ensure motors are halted during wait periods
+        } else {
+            sendWsMove('S'); // Ensure motors are halted during servo movements
+            const valInt = parseInt(cmd.action);
+            if (!isNaN(valInt)) {
+                const servoMap = { 'L.SHOULDER': 4, 'R.SHOULDER': 2, 'NECK': 3, 'L.ELBOW': 5, 'R.ELBOW': 1 }; 
+                if (servoMap[cmd.joint]) sendWsServo(servoMap[cmd.joint], valInt);
+            }
+        }
+
+        const adjDuration = cmd.duration / speed;
+        elapsed += cmd.duration;
+        const pct = Math.round((elapsed / totalDuration) * 100);
+        
+        document.getElementById('playProgressBar').style.width = pct + '%';
+        document.getElementById('playProgressPct').textContent = pct + '%';
+        document.getElementById('playProgressLabel').textContent = `Step ${i+1} / ${cmds.length} — ${cmd.joint} ${cmd.action}`;
+
+        i++;
+        state.playbackTimer = setTimeout(next, adjDuration);
+    }
+    next();
+}
+
+function stopPlayback() {
+    state.isPlaying = false;
+    clearTimeout(state.playbackTimer);
+    sendWsMove('S'); 
+    document.getElementById('playProgressWrap').style.display = 'none';
+    document.getElementById('playProgressBar').style.width = '0%';
+    document.getElementById('playSeqBtn').innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>PLAY`;
+    document.querySelectorAll('.seq-item[id^="seqcmd-"]').forEach(el => el.style.borderColor = '');
+    log('PLAYBACK STOPPED');
+}
+
+function quickPlay(id) {
+    const seq = state.savedSequences.find(s => s.id === id);
+    if (!seq) return;
+    log(`QUICK PLAY: "${seq.name}"`);
+    state.isPlaying = true;
+    executeCommandList(seq.commands, 1, () => {
+        state.isPlaying = false;
+        showToast(`"${seq.name}" complete`, 'var(--green)');
+    });
+    showToast(`Playing "${seq.name}"...`, 'var(--green)');
+}
+
+// =====================================================================
+// LOOP / REPEAT TOGGLES & ESTOP
+// =====================================================================
+function toggleLoopPlay() { state.loopPlay = !state.loopPlay; document.getElementById('loopToggle').classList.toggle('on', state.loopPlay); }
+function toggleRepeatPlay() { state.repeatPlay = !state.repeatPlay; document.getElementById('repeatToggle').classList.toggle('on', state.repeatPlay); }
+
+// ---- Home Position Reset ----
+// Resets all servos to their default home positions from the robot firmware
+function goHome() {
+    const homePositions = [
+        { s: 1, v: 75 },   // S1 — R.ELBOW
+        { s: 2, v: 90 },   // S2 — R.SHOULDER
+        { s: 3, v: 85 },   // S3 — NECK
+        { s: 4, v: 80 },   // S4 — L.SHOULDER
+        { s: 5, v: 110 }   // S5 — L.ELBOW
+    ];
+    homePositions.forEach(hp => {
+        sendWsServo(hp.s, hp.v);
+    });
+    sendWsMove('S');  // Stop all motors
+
+    // Sync teach-mode slider UI to home values
+    const homeJointVals = { 'L.SHOULDER': 80, 'R.SHOULDER': 90, 'L.ELBOW': 110, 'R.ELBOW': 75, 'NECK': 85 };
+    Object.keys(homeJointVals).forEach(joint => {
+        teachJointVals[joint] = homeJointVals[joint];
+    });
+    document.getElementById('teach-slider-lshoulder').value = 80;
+    document.getElementById('teach-slider-rshoulder').value = 90;
+    document.getElementById('teach-slider-lelbow').value = 110;
+    document.getElementById('teach-slider-relbow').value = 75;
+    document.getElementById('teach-slider-neck').value = 85;
+    document.getElementById('t-lshoulder-val').textContent = '80°';
+    document.getElementById('t-rshoulder-val').textContent = '90°';
+    document.getElementById('t-lelbow-val').textContent = '110°';
+    document.getElementById('t-relbow-val').textContent = '75°';
+    document.getElementById('t-neck-val').textContent = '85°';
+
+    showToast('HOME — Servos reset to default', 'var(--green)');
+    log('HOME POSITION: All servos reset to firmware defaults');
+}
+
+function emergencyStop() {
+    stopAllMovement(); stopPlayback();
+    if (state.teachMode) toggleTeachMode();
+    document.getElementById('estopModal').style.display = 'flex';
+    log('!!! EMERGENCY STOP ACTIVATED !!!');
+}
+function dismissEstop() {
+    document.getElementById('estopModal').style.display = 'none';
+    showToast('System resumed', 'var(--green)');
+}
+
+window.onload = () => {
+    renderTeachSeqList();
+    renderSequenceList();
+    log('NOVA Control Interface initialized (WebSocket Edition)');
+};
+</script>
+</body>
+</html>

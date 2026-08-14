@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOVA - Primary Tracking System</title>
+    
+    <!-- MediaPipe Face Detection -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS for layout utilities -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-red: #ff2a2a;
+            --dark-bg: #050508;
+            --hud-glow: 0 0 10px rgba(0, 243, 255, 0.5);
+            --hud-text-glow: 0 0 5px rgba(0, 243, 255, 0.8);
+            --hud-glow-locked: 0 0 10px rgba(255, 42, 42, 0.5);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--dark-bg);
+            color: var(--neon-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* Background grid effect */
+        .grid-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+        }
+
+        .hud-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        /* Video feed wrapper */
+        .video-wrapper {
+            position: relative;
+            width: 800px;
+            max-width: 90vw;
+            aspect-ratio: 4/3;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.1) inset, var(--hud-glow);
+            background: #000;
+            overflow: hidden;
+            transition: box-shadow 0.3s;
+        }
+
+        /* Stylized HUD Corners for the video wrapper */
+        .video-wrapper::before, .video-wrapper::after {
+            content: ''; position: absolute; width: 40px; height: 40px; border: 3px solid var(--neon-cyan); pointer-events: none; z-index: 20;
+        }
+        .video-wrapper::before { top: 0; left: 0; border-right: none; border-bottom: none; }
+        .video-wrapper::after { bottom: 0; right: 0; border-left: none; border-top: none; }
+        
+        .corner-tr, .corner-bl {
+            position: absolute; width: 40px; height: 40px; border: 3px solid var(--neon-cyan); pointer-events: none; z-index: 20;
+        }
+        .corner-tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+        .corner-bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+
+        /* Video styling: apply a lighter cyan tint to look like a machine vision feed but keep it visible */
+        video {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover;
+            filter: grayscale(20%) sepia(30%) hue-rotate(180deg) saturate(150%) brightness(1.1) contrast(1.1);
+            z-index: 1;
+        }
+
+        /* Canvas overlays on top of video */
+        canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* Scanline animation */
+        .scanline {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 3px;
+            background: linear-gradient(to right, transparent, var(--neon-cyan), transparent);
+            opacity: 0.5;
+            z-index: 10;
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: -10%; }
+            100% { top: 110%; }
+        }
+
+        /* UI Overlays */
+        .hud-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            padding: 2rem;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 30;
+        }
+
+        .text-glow {
+            text-shadow: var(--hud-text-glow);
+        }
+
+        /* Initialization Screen */
+        #init-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 8, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            transition: opacity 0.5s ease;
+        }
+
+        .loader {
+            width: 150px;
+            height: 150px;
+            border: 2px solid transparent;
+            border-top-color: var(--neon-cyan);
+            border-bottom-color: var(--neon-cyan);
+            border-radius: 50%;
+            animation: spin 2s linear infinite;
+            position: relative;
+        }
+        .loader::before {
+            content: '';
+            position: absolute;
+            top: 15px; left: 15px; right: 15px; bottom: 15px;
+            border: 2px solid transparent;
+            border-left-color: rgba(0, 243, 255, 0.5);
+            border-right-color: rgba(0, 243, 255, 0.5);
+            border-radius: 50%;
+            animation: spin 1s linear infinite reverse;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .telemetry-data { font-size: 0.8rem; letter-spacing: 1px; line-height: 1.5; }
+
+        /* New Control Styles */
+        .cyber-input {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 2px 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: bold;
+            width: 130px;
+            outline: none;
+        }
+        .cyber-button {
+            background: rgba(0, 243, 255, 0.2);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 4px 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            pointer-events: auto; /* Required so click events register inside pointer-events-none overlay */
+        }
+        .cyber-button:hover, .cyber-button.active {
+            background: var(--neon-cyan);
+            color: var(--dark-bg);
+            box-shadow: var(--hud-glow);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grid-bg"></div>
+
+    <!-- Loading Screen -->
+    <div id="init-screen">
+        <div class="loader mb-8"></div>
+        <h1 class="orbitron text-4xl font-bold tracking-widest text-glow mb-4">SYSTEM: NOVA</h1>
+        <p class="text-xl tracking-widest text-glow animate-pulse">BOOTING NEURAL NETWORKS...</p>
+        <p id="loading-status" class="mt-4 text-sm opacity-75">Establishing video feed link...</p>
+    </div>
+
+    <!-- Main HUD -->
+    <div class="hud-container">
+        
+        <!-- Peripheral HUD Elements -->
+        <div class="hud-overlay">
+            <!-- Top Row -->
+            <div class="flex justify-between items-start">
+                <div>
+                    <!-- Back button fixed using window.location.href='index.html' -->
+                    <button onclick="window.location.href='robot.html';" class="cyber-button mb-3" style="font-size: 0.8rem;">&lt; BACK</button>
+                    <h1 class="orbitron text-3xl font-black tracking-wider text-glow">NOVA</h1>
+                    <p class="text-xs tracking-widest opacity-80 mb-2">MK I TRACKING INTERFACE</p>
+                    <div class="w-32 h-1 bg-cyan-900 overflow-hidden">
+                        <div class="h-full bg-cyan-400 w-full animate-pulse"></div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="orbitron text-xl font-bold text-glow" id="time-display">00:00:00</p>
+                    <p class="text-xs tracking-widest text-cyan-400">SYS. STATUS: <span class="text-green-400 animate-pulse">ONLINE</span></p>
+                    <p class="text-xs tracking-widest mt-1">HUMANS DETECTED: <span id="target-count" class="font-bold text-lg">0</span></p>
+                    <p class="text-xs tracking-widest mt-1">LOCK STATUS: <span id="lock-status" class="font-bold text-yellow-400">SEARCHING</span></p>
+                </div>
+            </div>
+
+            <!-- Bottom Row -->
+            <div class="flex justify-between items-end pb-4">
+                <div class="telemetry-data opacity-70" id="telemetry-left">
+                    MEM: 0x8F9A1B<br>
+                    CPU: OPTIMAL<br>
+                    PWR: 98%
+                </div>
+                
+                <!-- NEW: UPLINK CONTROLS & SPATIAL DATA -->
+                <div class="text-center z-50 pointer-events-auto">
+                    <div id="spatial-data" class="text-xs font-bold text-cyan-400 mb-4 tracking-widest bg-black/50 p-2 rounded border border-cyan-900">
+                        AXIS X: 0.00 | Y: 0.00 | Z: 0.00
+                    </div>
+
+                    <p class="text-xs tracking-widest text-cyan-400 mb-1">ROBOT IP LINK</p>
+                    <input type="text" id="robot-ip" class="cyber-input mb-2 text-center" value="192.168.4.1">
+                    <br>
+                    <button id="track-btn" class="cyber-button" onclick="toggleTracking()">AUTO-TRACK: OFF</button>
+                    <p id="cmd-status" class="text-xs font-bold text-yellow-400 mt-2 tracking-widest">CMD: STANDBY</p>
+                </div>
+
+                <div class="telemetry-data text-right opacity-70" id="telemetry-right">
+                    LATENCY: 12ms<br>
+                    UPLINK: SECURE<br>
+                    NODE: ALPHA
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Target Area -->
+        <div class="video-wrapper" id="video-frame">
+            <div class="corner-tr"></div>
+            <div class="corner-bl"></div>
+            <div class="scanline"></div>
+            
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="canvas"></canvas>
+            
+            <!-- Crosshair Center -->
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 opacity-30" id="center-crosshair">
+                <div class="w-16 h-px bg-cyan-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+                <div class="h-16 w-px bg-cyan-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+                <div class="w-4 h-4 border border-cyan-400 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // System Clock
+    let SETUP_ROBOT_IP = "nova-robot.local";
+
+    async function findRobotIpInBackground() {
+        if (window.AndroidLauncher && typeof window.AndroidLauncher.getSavedRobotIP === 'function') {
+            const savedIP = window.AndroidLauncher.getSavedRobotIP();
+            if (savedIP) SETUP_ROBOT_IP = savedIP;
+        } else if (!SETUP_ROBOT_IP) {
+            SETUP_ROBOT_IP = "nova-robot.local";
+        }
+        
+        // Only update the input if the user hasn't typed in it recently
+        const ipInput = document.getElementById('robot-ip');
+        if (document.activeElement !== ipInput) {
+            ipInput.value = SETUP_ROBOT_IP;
+        }
+    }
+    setInterval(findRobotIpInBackground, 2000);
+
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('time-display').innerText = 
+            now.toLocaleTimeString('en-US', { hour12: false }) + '.' + now.getMilliseconds().toString().padStart(3, '0').substring(0, 2);
+    }, 50);
+
+    // Robust Telemetry & IP Verification using AbortController
+    setInterval(async () => {
+        let ipAddressNode = "OFFLINE";
+        let ssidNode = "DISCONNECTED";
+        let rssiNode = "N/A";
+        let currentLatencyNode = "ERR";
+        let uplinkNode = "FAIL";
+        let nodeDevice = "OFFLINE";
+
+        const currentIpToPing = document.getElementById('robot-ip').value || SETUP_ROBOT_IP;
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1000);
+
+            let t0 = performance.now();
+            let res = await fetch(`http://${currentIpToPing}/status`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            let data = await res.json();
+            let t1 = performance.now();
+            let latency = Math.round(t1 - t0);
+
+            // Sync IP if it successfully changed
+            if (data.ip_address && data.ip_address !== SETUP_ROBOT_IP && window.AndroidLauncher && typeof window.AndroidLauncher.saveRobotIP === 'function') {
+                window.AndroidLauncher.saveRobotIP(data.ip_address);
+                SETUP_ROBOT_IP = data.ip_address;
+                if (document.activeElement !== document.getElementById('robot-ip')) {
+                    document.getElementById('robot-ip').value = SETUP_ROBOT_IP;
+                }
+            }
+            
+            ipAddressNode = data.ip_address || "N/A";
+            ssidNode = data.connected_ssid || (data.wifi_mode === 'ap' ? 'NOVA_AP' : 'N/A');
+            rssiNode = data.rssi_dbm ? (data.rssi_dbm + " dBm") : "N/A";
+            
+            currentLatencyNode = latency + "ms";
+            uplinkNode = (data.status === "connection_successful" || data.status === "ok") ? "SECURE" : "WEAK";
+            nodeDevice = data.device || "NOVA";
+        } catch(e) {
+            // Error handling, keep defaults
+        }
+        
+        document.getElementById('telemetry-left').innerHTML = `IP: ${ipAddressNode}<br>SSID: ${ssidNode}<br>RSSI: ${rssiNode}`;
+        document.getElementById('telemetry-right').innerHTML = `LATENCY: ${currentLatencyNode}<br>UPLINK: ${uplinkNode}<br>NODE: ${nodeDevice}`;
+    }, 1500);
+
+    // AI Tracking Logic
+    let faceDetection, video, canvas, ctx;
+
+    async function loadModel() {
+        faceDetection = new FaceDetection({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`;
+            }
+        });
+
+        faceDetection.setOptions({
+            model: "short", // best for mobile
+            minDetectionConfidence: 0.5
+        });
+
+        faceDetection.onResults(onResults);
+    }
+
+    // Robot Control Variables
+    let isAutoTracking = false;
+    let lastCmd = "stop";
+    let lastCmdTime = 0;
+    let lastSpeed = -1;
+    let turnSpeed = 64; // Set specifically for left/right adjustments
+    let turnTimeout = null;
+
+    // --- WEBSOCKET CONNECTION FOR COMMANDS ---
+    let ws = null;
+    function connectWS() {
+        const ip = document.getElementById('robot-ip').value || SETUP_ROBOT_IP;
+        if (!ip) return;
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+        
+        try {
+            ws = new WebSocket(`ws://${ip}/ws`);
+            ws.onmessage = (e) => {
+                // Reply to ping to keep the connection alive
+                if (e.data === 'ping') {
+                    ws.send(JSON.stringify({ cmd: 'pong' }));
+                }
+            };
+            ws.onclose = () => { ws = null; };
+            ws.onerror = () => { ws = null; };
+        } catch(e) {
+            console.error("WS Init Error:", e);
+        }
+    }
+    
+    // Attempt connection periodically to maintain uplink
+    setInterval(connectWS, 2000);
+
+    function setSpeed(speedVal) {
+        if (lastSpeed === speedVal) return;
+        lastSpeed = speedVal;
+        
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ cmd: 'speed', v: speedVal }));
+        }
+    }
+
+    // Target Locking Variables
+    let lockedTargetBbox = null; 
+    let lostFrames = 0;
+    const MAX_LOST_FRAMES = 15; // How many frames to remember target before dropping lock
+    
+    let smoothX = 0, smoothY = 0, smoothZ = 0;
+
+    function smooth(value, prev, factor = 0.7) {
+        return prev * factor + value * (1 - factor);
+    }
+
+    function toggleTracking() {
+        isAutoTracking = !isAutoTracking;
+        const btn = document.getElementById('track-btn');
+        if(isAutoTracking) {
+            btn.innerText = "AUTO-TRACK: ON";
+            btn.classList.add('active');
+        } else {
+            btn.innerText = "AUTO-TRACK: OFF";
+            btn.classList.remove('active');
+            
+            // Clear any pending transitions
+            if (turnTimeout) {
+                clearTimeout(turnTimeout);
+                turnTimeout = null;
+            }
+            
+            sendTrackingCommand("stop", true); // Force stop when disabled
+            lockedTargetBbox = null; // Clear locks
+        }
+    }
+
+    async function sendTrackingCommand(cmd, force = false) {
+        if (cmd === lastCmd && !force) return;
+        lastCmd = cmd;
+        
+        const cmdStatusEl = document.getElementById('cmd-status');
+        
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            // Send WebSocket JSON Payload matching ESP32
+            ws.send(JSON.stringify({ cmd: cmd }));
+            
+            if (cmdStatusEl) {
+                cmdStatusEl.innerText = `CMD: ${cmd.toUpperCase()}`;
+                if (cmd !== "stop") {
+                    cmdStatusEl.classList.remove('text-yellow-400', 'text-red-500');
+                    cmdStatusEl.classList.add('text-green-400');
+                } else {
+                    cmdStatusEl.classList.add('text-yellow-400');
+                    cmdStatusEl.classList.remove('text-green-400', 'text-red-500');
+                }
+            }
+        } else {
+            // Error handling UI when WS is disconnected
+            if (cmdStatusEl) {
+                cmdStatusEl.innerText = `WS UPLINK ERR`;
+                cmdStatusEl.classList.remove('text-green-400', 'text-yellow-400');
+                cmdStatusEl.classList.add('text-red-500');
+            }
+        }
+    }
+
+    async function setupCamera() {
+        video = document.getElementById('video');
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "user", // changed back to front camera
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        });
+
+        video.srcObject = stream;
+        video.play();
+
+        return new Promise(resolve => {
+            video.onloadedmetadata = () => resolve(video);
+        });
+    }
+
+    // Custom UI Drawing function for Jarvis style target boxes
+    function drawJarvisBox(ctx, x, y, width, height, score, isLocked) {
+        const cornerLength = Math.min(width, height) * 0.15; // 15% of size
+        const padding = 10;
+        
+        const px = x - padding;
+        const py = y - padding;
+        const pw = width + (padding * 2);
+        const ph = height + (padding * 2);
+
+        // Change color to RED if this is the locked target
+        const color = isLocked ? "#ff2a2a" : "#00f3ff";
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isLocked ? 3 : 2;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = color;
+
+        ctx.beginPath();
+        
+        // Top Left
+        ctx.moveTo(px, py + cornerLength);
+        ctx.lineTo(px, py);
+        ctx.lineTo(px + cornerLength, py);
+        
+        // Top Right
+        ctx.moveTo(px + pw - cornerLength, py);
+        ctx.lineTo(px + pw, py);
+        ctx.lineTo(px + pw, py + cornerLength);
+        
+        // Bottom Right
+        ctx.moveTo(px + pw, py + ph - cornerLength);
+        ctx.lineTo(px + pw, py + ph);
+        ctx.lineTo(px + pw - cornerLength, py + ph);
+        
+        // Bottom Left
+        ctx.moveTo(px + cornerLength, py + ph);
+        ctx.lineTo(px, py + ph);
+        ctx.lineTo(px, py + ph - cornerLength);
+
+        ctx.stroke();
+
+        // Target Lock Elements
+        ctx.fillStyle = isLocked ? "rgba(255, 42, 42, 0.15)" : "rgba(0, 243, 255, 0.1)";
+        ctx.fillRect(px, py, pw, ph); // Subtle background tint
+        
+        // Center reticle
+        ctx.beginPath();
+        ctx.arc(px + pw/2, py + ph/2, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        // Reset shadow for text
+        ctx.shadowBlur = 5;
+
+        // Information Tags
+        ctx.font = "bold 14px 'Rajdhani'";
+        ctx.fillStyle = color;
+        
+        const confidence = (score * 100).toFixed(1);
+        
+        // Text block
+        ctx.fillText(isLocked ? `[LOCKED: TARGET_ALPHA]` : `TRK: HUMAN_BIOMETRIC`, px, py - 20);
+        ctx.fillText(`CONF: ${confidence}%`, px, py - 5);
+        
+        // Random tech data on the side
+        ctx.font = "10px 'Rajdhani'";
+        ctx.fillText(`X:${Math.round(x)} Y:${Math.round(y)}`, px + pw + 5, py + 10);
+        
+        // Reset shadow
+        ctx.shadowBlur = 0;
+    }
+
+    // Calculate distance between centers of two bounding boxes
+    function getDistance(bbox1, bbox2) {
+        const cx1 = bbox1[0] + bbox1[2]/2;
+        const cy1 = bbox1[1] + bbox1[3]/2;
+        const cx2 = bbox2[0] + bbox2[2]/2;
+        const cy2 = bbox2[1] + bbox2[3]/2;
+        return Math.sqrt(Math.pow(cx1-cx2, 2) + Math.pow(cy1-cy2, 2));
+    }
+
+    let trackedFace = null;
+
+    function onResults(results) {
+        if (canvas.width !== video.clientWidth || canvas.height !== video.clientHeight) {
+            canvas.width = video.clientWidth;
+            canvas.height = video.clientHeight;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (results.detections && results.detections.length > 0) {
+            const det = results.detections[0];
+            const box = det.boundingBox;
+
+            let x = box.xCenter * canvas.width - (box.width * canvas.width)/2;
+            let y = box.yCenter * canvas.height - (box.height * canvas.height)/2;
+            let w = box.width * canvas.width;
+            let h = box.height * canvas.height;
+
+            // 🔥 FULL HEAD EXPANSION (asymmetric for forehead & chin)
+            const expandTop = h * 0.9;     // Massive expansion up for the forehead/hair
+            const expandBottom = h * 0.4;  // Moderate expansion down for the chin/jaw
+            const expandSide = w * 0.4;    // Expand evenly to the sides for ears
+
+            x = x - expandSide;
+            y = y - expandTop;
+
+            w = w + (expandSide * 2);
+            h = h + expandTop + expandBottom;
+
+            // Store original face width for stable depth calculation (unaffected by expansion)
+            const coreFaceWidth = box.width * canvas.width;
+
+            // 🔥 SMOOTH TRACKING
+            if (trackedFace) {
+                trackedFace.x = trackedFace.x * 0.7 + x * 0.3;
+                trackedFace.y = trackedFace.y * 0.7 + y * 0.3;
+                trackedFace.w = trackedFace.w * 0.7 + w * 0.3;
+                trackedFace.h = trackedFace.h * 0.7 + h * 0.3;
+                trackedFace.depthW = (trackedFace.depthW || coreFaceWidth) * 0.7 + coreFaceWidth * 0.3;
+            } else {
+                trackedFace = { x, y, w, h, depthW: coreFaceWidth };
+            }
+
+            const cx = trackedFace.x + trackedFace.w/2;
+            const cy = trackedFace.y + trackedFace.h/2;
+
+            // DRAW
+            ctx.strokeStyle = "lime";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(trackedFace.x, trackedFace.y, trackedFace.w, trackedFace.h);
+
+            // AXIS
+            const axisX = (cx / canvas.width) * 2 - 1;
+            const axisY = (cy / canvas.height) * 2 - 1;
+            
+            // Raw face width ratio (0.0 to 1.0)
+            const faceRatio = trackedFace.depthW / canvas.width;
+
+            document.getElementById('spatial-data').innerText =
+                `AXIS X: ${axisX.toFixed(2)} | Y: ${axisY.toFixed(2)} | Ratio: ${(faceRatio * 100).toFixed(1)}%`;
+
+            // MOVEMENT
+            // Priority 1: Center the target horizontally (FLIPPED for front camera mirror effect)
+            // Priority 2: Manage distance
+            if (isAutoTracking) {
+                if (axisX < -0.15) {
+                    if (lastCmd !== "right" && !turnTimeout) {
+                        sendTrackingCommand("stop", true); // Stop before turning
+                        turnTimeout = setTimeout(() => {
+                            turnTimeout = null;
+                            if (!isAutoTracking) return;
+                            setSpeed(turnSpeed); // Use speed 63
+                            sendTrackingCommand("right", true); // Flipped
+                        }, 150); // 150ms allowance for motor momentum to stop
+                    } else if (lastCmd === "right" && !turnTimeout) {
+                        setSpeed(turnSpeed);
+                        sendTrackingCommand("right"); 
+                    }
+                } else if (axisX > 0.15) {
+                    if (lastCmd !== "left" && !turnTimeout) {
+                        sendTrackingCommand("stop", true); // Stop before turning
+                        turnTimeout = setTimeout(() => {
+                            turnTimeout = null;
+                            if (!isAutoTracking) return;
+                            setSpeed(turnSpeed); // Use speed 63
+                            sendTrackingCommand("left", true);  // Flipped
+                        }, 150); // 150ms allowance for motor momentum to stop
+                    } else if (lastCmd === "left" && !turnTimeout) {
+                        setSpeed(turnSpeed);
+                        sendTrackingCommand("left");  
+                    }
+                } else {
+                    // X is centered, clear turn delays if any
+                    if (turnTimeout) {
+                        clearTimeout(turnTimeout);
+                        turnTimeout = null;
+                    }
+                    
+                    // Manage distance using raw face ratio
+                    if (faceRatio < 0.25) {
+                        setSpeed(255); // Full speed for forward
+                        sendTrackingCommand("forward");  // Target is small (<25% screen) -> drive forward
+                    } else {
+                        sendTrackingCommand("stop");     // Target is big enough -> stop (No backward movement)
+                    }
+                }
+            }
+
+        } else {
+            trackedFace = null;
+            sendTrackingCommand("stop");
+        }
+    }
+
+    async function initNova() {
+        try {
+            const statusText = document.getElementById('loading-status');
+            
+            statusText.innerText = "Accessing optical sensors...";
+            await setupCamera();
+            
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = video.clientWidth;
+            canvas.height = video.clientHeight;
+            
+            window.addEventListener('resize', () => {
+                canvas.width = video.clientWidth;
+                canvas.height = video.clientHeight;
+            });
+
+            statusText.innerText = "Loading MediaPipe Neural Network...";
+            await loadModel();
+            
+            statusText.innerText = "System Ready.";
+            
+            setTimeout(() => {
+                document.getElementById('init-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('init-screen').style.display = 'none';
+                    const camera = new Camera(video, {
+                        onFrame: async () => {
+                            await faceDetection.send({ image: video });
+                        },
+                        width: 640,
+                        height: 480
+                    });
+                    camera.start();
+                }, 500);
+            }, 500);
+
+        } catch (error) {
+            console.error("NOVA Initialization Failed:", error);
+            document.getElementById('loading-status').innerText = "ERROR: Sensor or Network Failure. Check console.";
+            document.getElementById('loading-status').classList.add('text-red-500');
+        }
+    }
+
+    window.onload = initNova;
+</script>
+
+</body>
+</html>
